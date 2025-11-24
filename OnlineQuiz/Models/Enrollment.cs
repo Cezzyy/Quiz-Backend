@@ -28,15 +28,5 @@ namespace OnlineQuiz.Models
         [Required]
         [Column("EnrolledBy")]
         public int EnrolledBy { get; set; }
-
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public Student Student { get; set; } = null!;
-
-        [ForeignKey("CourseId")]
-        public Course Course { get; set; } = null!;
-
-        [ForeignKey("EnrolledBy")]
-        public User EnrolledByUser { get; set; } = null!;
     }
 }

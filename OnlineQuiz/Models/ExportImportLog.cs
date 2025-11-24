@@ -37,9 +37,5 @@ namespace OnlineQuiz.Models
 
         [Column("ErrorMessage")]
         public string? ErrorMessage { get; set; }
-
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public User User { get; set; } = null!;
     }
 }

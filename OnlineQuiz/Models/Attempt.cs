@@ -29,14 +29,5 @@ namespace OnlineQuiz.Models
 
         [Column("Time_Spent_Seconds")]
         public int? TimeSpentSeconds { get; set; }
-
-        // Navigation properties
-        [ForeignKey("QuizId")]
-        public Quiz Quiz { get; set; } = null!;
-
-        [ForeignKey("UserId")]
-        public Student Student { get; set; } = null!;
-
-        public ICollection<AttemptAnswer> AttemptAnswers { get; set; } = new List<AttemptAnswer>();
     }
 }

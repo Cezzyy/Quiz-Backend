@@ -46,15 +46,5 @@ namespace OnlineQuiz.Models
         [Required]
         [Column("CreatedBy")]
         public int CreatedBy { get; set; }
-
-        // Navigation properties
-        [ForeignKey("InstructorUserId")]
-        public Teacher Instructor { get; set; } = null!;
-
-        [ForeignKey("CreatedBy")]
-        public User Creator { get; set; } = null!;
-
-        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
-        public ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();
     }
 }

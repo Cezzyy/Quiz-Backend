@@ -26,15 +26,5 @@ namespace OnlineQuiz.Models
 
         [Column("Is_Correct")]
         public bool? IsCorrect { get; set; }
-
-        // Navigation properties
-        [ForeignKey("AttemptId")]
-        public Attempt Attempt { get; set; } = null!;
-
-        [ForeignKey("QuestionId")]
-        public Question Question { get; set; } = null!;
-
-        [ForeignKey("ChoiceId")]
-        public Choice? Choice { get; set; }
     }
 }

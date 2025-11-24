@@ -28,12 +28,5 @@ namespace OnlineQuiz.Models
 
         [Column("Sort_Order")]
         public int SortOrder { get; set; } = 0;
-
-        // Navigation properties
-        [ForeignKey("QuizId")]
-        public Quiz Quiz { get; set; } = null!;
-
-        public ICollection<Choice> Choices { get; set; } = new List<Choice>();
-        public ICollection<AttemptAnswer> AttemptAnswers { get; set; } = new List<AttemptAnswer>();
     }
 }

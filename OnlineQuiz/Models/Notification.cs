@@ -33,9 +33,5 @@ namespace OnlineQuiz.Models
 
         [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public User User { get; set; } = null!;
     }
 }
