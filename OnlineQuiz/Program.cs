@@ -1,4 +1,6 @@
 using DotNetEnv;
+using Mapster;
+using OnlineQuiz.Mappings;
 using OnlineQuiz.Services;
 using Scalar.AspNetCore;
 
@@ -27,18 +29,22 @@ var supabaseService = new SupabaseService(supabaseUrl, supabaseKey);
 await supabaseService.InitializeAsync();
 builder.Services.AddSingleton(supabaseService);
 
-// Configure AutoMapper
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+// Configure Mapster mappings
+MapsterConfig.RegisterMappings();
+
+
+// Configure Mapster
+builder.Services.AddMapster();
 
 // Register Repository Layer
-// builder.Services.AddScoped<IUserRepository, UserRepository>();
-// builder.Services.AddScoped<ICourseRepository, CourseRepository>();
-// builder.Services.AddScoped<IQuizRepository, QuizRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IUserRepository, OnlineQuiz.Repository.UserRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IStudentRepository, OnlineQuiz.Repository.StudentRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.ITeacherRepository, OnlineQuiz.Repository.TeacherRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IUserRoleRepository, OnlineQuiz.Repository.UserRoleRepository>();
 
 // Register Service Layer
-// builder.Services.AddScoped<IUserService, UserService>();
-// builder.Services.AddScoped<ICourseService, CourseService>();
-// builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IUserService, OnlineQuiz.Services.UserService>();
+
 
 // Configure CORS for Web (Vue) and Mobile (Flutter)
 builder.Services.AddCors(options =>
