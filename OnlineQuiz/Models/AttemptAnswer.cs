@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using Postgrest.Attributes;
+using Postgrest.Models;
 
 namespace OnlineQuiz.Models
 {
     [Table("AttemptAnswer")]
-    public class AttemptAnswer
+    public class AttemptAnswer : BaseModel
     {
-        [Key]
+        [PrimaryKey("AttemptAnswerId")]
         [Column("AttemptAnswerId")]
         public int AttemptAnswerId { get; set; }
 

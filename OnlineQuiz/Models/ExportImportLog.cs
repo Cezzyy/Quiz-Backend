@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using Postgrest.Attributes;
+using Postgrest.Models;
 
 namespace OnlineQuiz.Models
 {
     [Table("ExportImportLog")]
-    public class ExportImportLog
+    public class ExportImportLog : BaseModel
     {
-        [Key]
+        [PrimaryKey("LogId")]
         [Column("LogId")]
         public int LogId { get; set; }
 
