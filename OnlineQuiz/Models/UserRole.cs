@@ -11,12 +11,5 @@ namespace OnlineQuiz.Models
 
         [Column("RoleId")]
         public int RoleId { get; set; }
-
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public User User { get; set; } = null!;
-
-        [ForeignKey("RoleId")]
-        public Role Role { get; set; } = null!;
     }
 }

@@ -25,12 +25,5 @@ namespace OnlineQuiz.Models
         [MaxLength(255)]
         [Column("Course")]
         public string? Course { get; set; }
-
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public User User { get; set; } = null!;
-
-        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
-        public ICollection<Attempt> Attempts { get; set; } = new List<Attempt>();
     }
 }
