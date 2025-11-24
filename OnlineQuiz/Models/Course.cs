@@ -23,7 +23,7 @@ namespace OnlineQuiz.Models
 
         [Required]
         [Column("Instructor_UserId")]
-        public int InstructorUserId { get; set; }
+        public int InstructorId { get; set; }
 
         [Required]
         [MaxLength(50)]
