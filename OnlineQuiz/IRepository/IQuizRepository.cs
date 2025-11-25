@@ -17,5 +17,6 @@ namespace OnlineQuiz.IRepository
         Task<List<Choice>> GetChoicesByQuestionIdAsync(int questionId);
         Task<List<Choice>> GetChoicesByQuestionIdsAsync(List<int> questionIds);
         Task<List<Quiz>> GetByIdsAsync(List<int> quizIds);
+        Task<List<Quiz>> GetUpcomingDeadlinesAsync(DateTime threshold);
     }
 }

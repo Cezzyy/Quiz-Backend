@@ -8,6 +8,7 @@ namespace OnlineQuiz.IRepository
         Task<Attempt?> GetByIdAsync(int attemptId);
         Task<List<Attempt>> GetByQuizIdAsync(int quizId);
         Task<List<Attempt>> GetByStudentIdAsync(int studentId);
+        Task<List<Attempt>> GetByQuizIdAndUserIdAsync(int quizId, int userId);
         Task<Attempt> UpdateAsync(Attempt attempt);
         Task<bool> DeleteAsync(int attemptId);
     }

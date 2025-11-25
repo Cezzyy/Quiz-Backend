@@ -49,6 +49,16 @@ namespace OnlineQuiz.Repository
             return result.Models;
         }
 
+        public async Task<List<Attempt>> GetByQuizIdAndUserIdAsync(int quizId, int userId)
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<Attempt>()
+                .Where(a => a.QuizId == quizId && a.UserId == userId)
+                .Order("StartedAt", Postgrest.Constants.Ordering.Descending)
+                .Get();
+            return result.Models;
+        }
+
         public async Task<Attempt> UpdateAsync(Attempt attempt)
         {
             var client = _supabaseService.GetClient();

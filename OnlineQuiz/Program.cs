@@ -95,6 +95,7 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.IQuizRepository, OnlineQuiz.Re
 builder.Services.AddScoped<OnlineQuiz.IRepository.IEnrollmentRepository, OnlineQuiz.Repository.EnrollmentRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IAuthRepository, OnlineQuiz.Repository.AuthRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IActivityLogRepository, OnlineQuiz.Repository.ActivityLogRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.INotificationRepository, OnlineQuiz.Repository.NotificationRepository>();
 
 // Register Service Layer
 builder.Services.AddScoped<OnlineQuiz.IServices.IUserService, OnlineQuiz.Services.UserService>();
@@ -106,6 +107,10 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IAttemptService, OnlineQuiz.Serv
 builder.Services.AddScoped<OnlineQuiz.IServices.IAnswerService, OnlineQuiz.Services.AnswerService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IAuthService, OnlineQuiz.Services.AuthService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IActivityLogService, OnlineQuiz.Services.ActivityLogService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.INotificationService, OnlineQuiz.Services.NotificationService>();
+
+// Register Background Services
+builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();
 
 
 

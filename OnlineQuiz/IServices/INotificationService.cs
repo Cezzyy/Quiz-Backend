@@ -9,5 +9,7 @@ namespace OnlineQuiz.IServices
         Task<List<NotificationResponseDto>> GetNotificationsForUserAsync(int userId);
         Task<NotificationResponseDto> MarkAsReadAsync(int notificationId, int userId);
         Task<bool> DeleteNotificationAsync(int notificationId, int userId);
+        Task<bool> MarkAllAsReadAsync(int userId);
+        Task NotifyStudentsOfNewQuizAsync(int quizId, int courseId, string quizTitle);
     }
 }

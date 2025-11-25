@@ -98,5 +98,21 @@ namespace OnlineQuiz.Repository
                 .Get();
             return response.Models;
         }
+
+        public async Task<List<Quiz>> GetUpcomingDeadlinesAsync(DateTime threshold)
+        {
+            // Fetch quizzes that have a due date and are not yet due (or recently due)
+            // Ideally we want Due_At > Now AND Due_At <= Threshold
+            // Convert DateTime to ISO 8601 string format for Postgrest compatibility
+            
+            var nowIso = DateTime.UtcNow.ToString("o");
+            var thresholdIso = threshold.ToString("o");
+            
+            var response = await _supabaseService.GetClient().From<Quiz>()
+                .Filter("Due_At", Postgrest.Constants.Operator.GreaterThan, nowIso)
+                .Filter("Due_At", Postgrest.Constants.Operator.LessThanOrEqual, thresholdIso)
+                .Get();
+            return response.Models;
+        }
     }
 }
