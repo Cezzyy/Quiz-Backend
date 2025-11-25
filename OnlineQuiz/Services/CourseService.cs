@@ -58,6 +58,23 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<CourseResponseDto?> GetCourseByIdAsync(int courseId)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                return null;
+            }
+
+            var response = course.Adapt<CourseResponseDto>();
+            
+            // Fetch instructor details
+            var instructorUser = await _userRepository.GetByIdAsync(course.InstructorUserId);
+            response.InstructorName = instructorUser?.FullName;
+            
+            return response;
+        }
+
         public async Task<List<CourseResponseDto>> GetCoursesForTeacherAsync(int teacherId)
         {
             var courses = await _courseRepository.GetByInstructorIdAsync(teacherId);

@@ -61,6 +61,22 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get course by ID
+        /// </summary>
+        [HttpGet("{courseId}")]
+        [ProducesResponseType(typeof(CourseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<CourseResponseDto>> GetCourseById(int courseId)
+        {
+            var course = await _courseService.GetCourseByIdAsync(courseId);
+            if (course == null)
+            {
+                return NotFound(new { error = "Course not found" });
+            }
+            return Ok(course);
+        }
+
+        /// <summary>
         /// Get all courses
         /// </summary>
         [HttpGet]
