@@ -14,6 +14,7 @@ namespace OnlineQuiz.Services
         private readonly IEnrollmentRepository _enrollmentRepository;
         private readonly IUserRepository _userRepository;
         private readonly IUserRoleRepository _userRoleRepository;
+        private readonly IAttemptAnswerRepository _answerRepository;
 
         public AttemptService(
             IAttemptRepository attemptRepository,
@@ -21,7 +22,8 @@ namespace OnlineQuiz.Services
             ICourseRepository courseRepository,
             IEnrollmentRepository enrollmentRepository,
             IUserRepository userRepository,
-            IUserRoleRepository userRoleRepository)
+            IUserRoleRepository userRoleRepository,
+            IAttemptAnswerRepository answerRepository)
         {
             _attemptRepository = attemptRepository;
             _quizRepository = quizRepository;
@@ -29,6 +31,7 @@ namespace OnlineQuiz.Services
             _enrollmentRepository = enrollmentRepository;
             _userRepository = userRepository;
             _userRoleRepository = userRoleRepository;
+            _answerRepository = answerRepository;
         }
 
         public async Task<AttemptResponseDto> StartAttemptAsync(StartAttemptDto startAttemptDto)
@@ -246,8 +249,11 @@ namespace OnlineQuiz.Services
                 }
             }
 
+            // Calculate score server-side based on correct answers
+            var calculatedScore = await CalculateScoreAsync(attemptId, attempt.QuizId);
+
             attempt.SubmittedAt = DateTime.UtcNow;
-            attempt.Score = submitAttemptDto.Score;
+            attempt.Score = calculatedScore;
             attempt.TimeSpentSeconds = submitAttemptDto.TimeSpentSeconds;
 
             var updatedAttempt = await _attemptRepository.UpdateAsync(attempt);
@@ -544,6 +550,84 @@ namespace OnlineQuiz.Services
         {
             var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
             return userRoles.Select(ur => ur.RoleId).ToList();
+        }
+
+        /// <summary>
+        /// Calculate score by comparing student answers against correct choices
+        /// </summary>
+        private async Task<decimal> CalculateScoreAsync(int attemptId, int quizId)
+        {
+            // 1. Fetch all answers for this attempt
+            var answers = await _answerRepository.GetByAttemptIdAsync(attemptId);
+            
+            if (!answers.Any())
+            {
+                return 0; // No answers submitted
+            }
+
+            // 2. Fetch all questions for this quiz
+            var questions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
+            
+            if (!questions.Any())
+            {
+                return 0; // No questions in quiz
+            }
+
+            // 3. Fetch all choices for these questions
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            
+            // 4. Group choices by question for fast lookup
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            
+            // 5. Create question lookup
+            var questionMap = questions.ToDictionary(q => q.QuestionId);
+
+            decimal earnedPoints = 0;
+            decimal totalPoints = questions.Sum(q => q.Points);
+
+            // 6. Grade each answer
+            foreach (var answer in answers)
+            {
+                if (!questionMap.TryGetValue(answer.QuestionId, out var question))
+                {
+                    continue; // Question not found, skip
+                }
+
+                bool isCorrect = false;
+
+                // Grade based on question type
+                if (question.Type == "Single" || question.Type == "Multiple")
+                {
+                    // Check if student's choice is marked as correct
+                    if (answer.ChoiceId.HasValue && choicesMap.TryGetValue(question.QuestionId, out var choices))
+                    {
+                        var selectedChoice = choices.FirstOrDefault(c => c.ChoiceId == answer.ChoiceId.Value);
+                        isCorrect = selectedChoice?.IsCorrect ?? false;
+                    }
+                }
+                // Text questions default to false (require manual grading)
+                // Can be extended with keyword matching or other logic
+
+                // 7. Update IsCorrect in database
+                answer.IsCorrect = isCorrect;
+                await _answerRepository.UpdateAsync(answer);
+
+                // 8. Add points if correct
+                if (isCorrect)
+                {
+                    earnedPoints += question.Points;
+                }
+            }
+
+            // 9. Calculate percentage score (0-100)
+            if (totalPoints == 0)
+            {
+                return 0;
+            }
+
+            return Math.Round((earnedPoints / totalPoints) * 100, 2);
         }
     }
 }
