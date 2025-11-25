@@ -266,5 +266,46 @@ namespace OnlineQuiz.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Bulk delete courses (Admin only)
+        /// </summary>
+        [HttpDelete("bulk")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult> BulkDeleteCourses([FromBody] BulkDeleteCoursesDto dto)
+        {
+            try
+            {
+                var deletedCount = await _courseService.BulkDeleteCoursesAsync(dto.CourseIds);
+                
+                // Log the BULK_DELETE activity
+                try
+                {
+                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.Course,
+                        Description = $"Bulk deleted {deletedCount} courses",
+                        NewValues = new { CourseIds = dto.CourseIds, DeletedCount = deletedCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_DELETE activity: {logEx.Message}");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
