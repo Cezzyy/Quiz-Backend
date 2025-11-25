@@ -44,5 +44,11 @@ namespace OnlineQuiz.Repository
                 .Delete();
             return true;
         }
+
+        public async Task<bool> IsAdminAsync(int userId)
+        {
+            var roles = await GetByUserIdAsync(userId);
+            return roles.Any(r => r.RoleId == 1); // RoleId 1 is Admin
+        }
     }
 }
