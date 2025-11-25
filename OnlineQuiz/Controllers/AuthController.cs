@@ -53,7 +53,7 @@ namespace OnlineQuiz.Controllers
                 {
                     HttpOnly = true, // Prevents JavaScript access (XSS protection)
                     Secure = true, // Only send over HTTPS
-                    SameSite = SameSiteMode.Strict, // CSRF protection
+                    SameSite = SameSiteMode.Lax, // CSRF protection
                     Expires = loginResponse.TokenExpiration
                 };
 
