@@ -114,14 +114,26 @@ namespace OnlineQuiz.Services
             var attempts = await _attemptRepository.GetByQuizIdAsync(quizId);
             var response = new List<AttemptResponseDto>();
 
+            // Collect user IDs
+            var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
+            
+            // Batch fetch students
+            var students = await _userRepository.GetByIdsAsync(userIds);
+            var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+
             foreach (var attempt in attempts)
             {
-                var student = await _userRepository.GetByIdAsync(attempt.UserId);
+                string? studentName = null;
+                if (studentMap.TryGetValue(attempt.UserId, out var name))
+                {
+                    studentName = name;
+                }
+
                 response.Add(new AttemptResponseDto
                 {
                     AttemptId = attempt.AttemptId,
                     UserId = attempt.UserId,
-                    StudentName = student?.FullName,
+                    StudentName = studentName,
                     QuizId = attempt.QuizId,
                     QuizTitle = quiz.Title,
                     StartedAt = attempt.StartedAt,
@@ -139,18 +151,40 @@ namespace OnlineQuiz.Services
             var attempts = await _attemptRepository.GetByStudentIdAsync(studentId);
             var response = new List<AttemptResponseDto>();
 
+            if (!attempts.Any()) return response;
+
+            // Collect IDs
+            var quizIds = attempts.Select(a => a.QuizId).Distinct().ToList();
+            var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
+
+            // Batch fetch
+            var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
+            var students = await _userRepository.GetByIdsAsync(userIds);
+
+            var quizMap = quizzes.ToDictionary(q => q.QuizId, q => q.Title);
+            var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+
             foreach (var attempt in attempts)
             {
-                var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
-                var student = await _userRepository.GetByIdAsync(attempt.UserId);
+                string? quizTitle = null;
+                if (quizMap.TryGetValue(attempt.QuizId, out var title))
+                {
+                    quizTitle = title;
+                }
+
+                string? studentName = null;
+                if (studentMap.TryGetValue(attempt.UserId, out var name))
+                {
+                    studentName = name;
+                }
 
                 response.Add(new AttemptResponseDto
                 {
                     AttemptId = attempt.AttemptId,
                     UserId = attempt.UserId,
-                    StudentName = student?.FullName,
+                    StudentName = studentName,
                     QuizId = attempt.QuizId,
-                    QuizTitle = quiz?.Title,
+                    QuizTitle = quizTitle,
                     StartedAt = attempt.StartedAt,
                     SubmittedAt = attempt.SubmittedAt,
                     Score = attempt.Score,

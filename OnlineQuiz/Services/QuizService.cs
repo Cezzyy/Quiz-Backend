@@ -135,11 +135,24 @@ namespace OnlineQuiz.Services
             var questions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
             response.Questions = new List<QuestionResponseDto>();
 
+            // Collect all question IDs
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+            
+            // Batch fetch choices
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
             foreach (var q in questions)
             {
                 var qDto = q.Adapt<QuestionResponseDto>();
-                var choices = await _quizRepository.GetChoicesByQuestionIdAsync(q.QuestionId);
-                qDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                if (choicesMap.TryGetValue(q.QuestionId, out var choices))
+                {
+                    qDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                }
+                else
+                {
+                    qDto.Choices = new List<ChoiceResponseDto>();
+                }
                 response.Questions.Add(qDto);
             }
 

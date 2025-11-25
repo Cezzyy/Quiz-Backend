@@ -45,6 +45,17 @@ namespace OnlineQuiz.Repository
             return result.Models;
         }
 
+        public async Task<List<User>> GetByIdsAsync(List<int> userIds)
+        {
+            if (!userIds.Any()) return new List<User>();
+
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>()
+                .Filter("UserId", Postgrest.Constants.Operator.In, userIds)
+                .Get();
+            return result.Models;
+        }
+
         public async Task<User> UpdateAsync(User user)
         {
             user.UpdatedAt = DateTime.UtcNow;
