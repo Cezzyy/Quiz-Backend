@@ -109,13 +109,21 @@ namespace OnlineQuiz.Services
 
         public async Task<UserResponseDto?> GetUserByIdAsync(int userId)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            // Fetch all data in parallel for better performance
+            var userTask = _userRepository.GetByIdAsync(userId);
+            var userRolesTask = _userRoleRepository.GetByUserIdAsync(userId);
+            var studentTask = _studentRepository.GetByUserIdAsync(userId);
+            var teacherTask = _teacherRepository.GetByUserIdAsync(userId);
+
+            await Task.WhenAll(userTask, userRolesTask, studentTask, teacherTask);
+
+            var user = await userTask;
             if (user == null)
             {
                 return null;
             }
 
-            var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+            var userRoles = await userRolesTask;
             var userRole = userRoles.FirstOrDefault();
             
             if (userRole == null)
@@ -138,11 +146,11 @@ namespace OnlineQuiz.Services
                 RoleName = GetRoleName(userRole.RoleId)
             };
 
-            // Populate role-specific data
+            // Populate role-specific data from the already-fetched parallel queries
             switch (userRole.RoleId)
             {
                 case RoleConstants.Student: // Student
-                    var student = await _studentRepository.GetByUserIdAsync(userId);
+                    var student = await studentTask;
                     if (student != null)
                     {
                         response.Student = new StudentData
@@ -156,7 +164,7 @@ namespace OnlineQuiz.Services
                     break;
 
                 case RoleConstants.Teacher: // Teacher
-                    var teacher = await _teacherRepository.GetByUserIdAsync(userId);
+                    var teacher = await teacherTask;
                     if (teacher != null)
                     {
                         response.Teacher = new TeacherData
