@@ -86,6 +86,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var enrollments = await _courseService.GetCourseEnrollmentsAsync(courseId, teacherId);
+                if (!enrollments.Any())
+                {
+                    return NotFound(new { error = "No enrollments found for this course" });
+                }
                 return Ok(enrollments);
             }
             catch (UnauthorizedAccessException ex)
@@ -114,6 +118,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var courses = await _courseService.GetCoursesForStudentAsync(studentId);
+                if (!courses.Any())
+                {
+                    return NotFound(new { error = "No enrollments found for this student" });
+                }
                 return Ok(courses);
             }
             catch (Exception ex)

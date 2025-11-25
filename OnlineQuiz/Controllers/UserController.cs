@@ -55,6 +55,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var users = await _userService.GetAllUsersAsync();
+                if (!users.Any())
+                {
+                    return NotFound(new { error = "No users found" });
+                }
                 return Ok(users);
             }
             catch (Exception ex)

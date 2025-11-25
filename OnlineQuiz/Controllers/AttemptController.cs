@@ -66,6 +66,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var attempts = await _attemptService.GetAttemptsForQuizAsync(quizId, teacherId);
+                if (!attempts.Any())
+                {
+                    return NotFound(new { error = "No attempts found for this quiz" });
+                }
                 return Ok(attempts);
             }
             catch (UnauthorizedAccessException ex)
@@ -86,6 +90,10 @@ namespace OnlineQuiz.Controllers
         public async Task<ActionResult<List<AttemptResponseDto>>> GetAttemptsForStudent(int studentId)
         {
             var attempts = await _attemptService.GetAttemptsForStudentAsync(studentId);
+            if (!attempts.Any())
+            {
+                return NotFound(new { error = "No attempts found for this student" });
+            }
             return Ok(attempts);
         }
 
