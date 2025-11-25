@@ -14,5 +14,7 @@ namespace OnlineQuiz.IServices
         Task<CourseResponseDto> UpdateCourseAsync(int courseId, UpdateCourseDto updateCourseDto);
         Task<bool> DeleteCourseAsync(int courseId);
         Task<List<CourseResponseDto>> GetAllCoursesAsync();
+        Task<int> BulkDeleteCoursesAsync(List<int> courseIds);
+        Task<int> BulkUnenrollStudentsAsync(BulkDeleteEnrollmentsDto dto, int teacherId);
     }
 }

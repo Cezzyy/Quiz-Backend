@@ -63,5 +63,36 @@ namespace OnlineQuiz.Repository
                 .GroupBy(e => e.CourseId)
                 .ToDictionary(g => g.Key, g => g.Count());
         }
+
+        public async Task<int> BulkDeleteByIdsAsync(List<int> enrollmentIds)
+        {
+            if (!enrollmentIds.Any()) return 0;
+
+            await _supabaseService.GetClient().From<Enrollment>()
+                .Filter("EnrollmentId", Postgrest.Constants.Operator.In, enrollmentIds)
+                .Delete();
+            return enrollmentIds.Count;
+        }
+
+        public async Task<int> BulkDeleteByCourseAndStudentsAsync(int courseId, List<int> studentIds)
+        {
+            if (!studentIds.Any()) return 0;
+
+            // Find enrollments matching the course and student IDs
+            var enrollments = await _supabaseService.GetClient().From<Enrollment>()
+                .Where(e => e.CourseId == courseId)
+                .Filter("UserId", Postgrest.Constants.Operator.In, studentIds)
+                .Get();
+
+            if (!enrollments.Models.Any()) return 0;
+
+            var enrollmentIds = enrollments.Models.Select(e => e.EnrollmentId).ToList();
+            
+            await _supabaseService.GetClient().From<Enrollment>()
+                .Filter("EnrollmentId", Postgrest.Constants.Operator.In, enrollmentIds)
+                .Delete();
+            
+            return enrollmentIds.Count;
+        }
     }
 }

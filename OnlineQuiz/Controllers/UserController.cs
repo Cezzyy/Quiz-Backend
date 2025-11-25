@@ -223,5 +223,46 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { error = "An error occurred while deleting the user", details = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Bulk delete users (Admin only)
+        /// </summary>
+        [HttpDelete("bulk")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult> BulkDeleteUsers([FromBody] BulkDeleteUsersDto dto)
+        {
+            try
+            {
+                var deletedCount = await _userService.BulkDeleteAsync(dto.UserIds);
+                
+                // Log the BULK_DELETE activity
+                try
+                {
+                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        Description = $"Bulk deleted {deletedCount} users",
+                        NewValues = new { UserIds = dto.UserIds, DeletedCount = deletedCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_DELETE activity: {logEx.Message}");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk deleting users", details = ex.Message });
+            }
+        }
     }
 }

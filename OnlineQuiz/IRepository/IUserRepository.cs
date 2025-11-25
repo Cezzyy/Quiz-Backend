@@ -14,5 +14,6 @@ namespace OnlineQuiz.IRepository
         Task<List<User>> GetRecentRegistrationsAsync(int days);
         Task<User> UpdateAsync(User user);
         Task<bool> DeleteAsync(int userId);
+        Task<int> BulkDeleteAsync(List<int> userIds);
     }
 }

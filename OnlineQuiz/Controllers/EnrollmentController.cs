@@ -208,5 +208,57 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { error = "An error occurred while unenrolling the student", details = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Bulk unenroll students (Course instructor)
+        /// </summary>
+        [HttpDelete("bulk")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> BulkUnenrollStudents([FromBody] BulkDeleteEnrollmentsDto dto, [FromQuery] int teacherId)
+        {
+            try
+            {
+                var deletedCount = await _courseService.BulkUnenrollStudentsAsync(dto, teacherId);
+                
+                // Log the BULK_DELETE activity
+                try
+                {
+                    var description = dto.EnrollmentIds != null 
+                        ? $"Bulk unenrolled {deletedCount} students by enrollment IDs"
+                        : $"Bulk unenrolled {deletedCount} students from course {dto.CourseId}";
+
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = teacherId,
+                        Action = ActivityLogConstants.Actions.UNENROLL,
+                        Entity = ActivityLogConstants.Entities.Enrollment,
+                        Description = description,
+                        NewValues = new { dto.EnrollmentIds, dto.CourseId, dto.StudentIds, DeletedCount = deletedCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_UNENROLL activity: {logEx.Message}");
+                }
+
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk unenrolling students", details = ex.Message });
+            }
+        }
     }
 }

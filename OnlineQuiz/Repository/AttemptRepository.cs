@@ -152,5 +152,16 @@ namespace OnlineQuiz.Repository
                 .Get();
             return result.Models;
         }
+
+        public async Task<int> BulkDeleteAsync(List<int> attemptIds)
+        {
+            if (!attemptIds.Any()) return 0;
+
+            var client = _supabaseService.GetClient();
+            await client.From<Attempt>()
+                .Filter("AttemptId", Postgrest.Constants.Operator.In, attemptIds)
+                .Delete();
+            return attemptIds.Count;
+        }
     }
 }

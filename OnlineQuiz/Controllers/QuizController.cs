@@ -238,5 +238,49 @@ namespace OnlineQuiz.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Bulk delete quizzes (Course instructor or admin)
+        /// </summary>
+        [HttpDelete("bulk")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> BulkDeleteQuizzes([FromBody] BulkDeleteQuizzesDto dto)
+        {
+            try
+            {
+                var deletedCount = await _quizService.BulkDeleteQuizzesAsync(dto.QuizIds, dto.UserId);
+                
+                // Log the BULK_DELETE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = dto.UserId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.Quiz,
+                        Description = $"Bulk deleted {deletedCount} quizzes",
+                        NewValues = new { QuizIds = dto.QuizIds, DeletedCount = deletedCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_DELETE activity: {logEx.Message}");
+                }
+
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
