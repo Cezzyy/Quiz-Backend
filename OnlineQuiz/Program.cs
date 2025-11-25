@@ -108,6 +108,7 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IAnswerService, OnlineQuiz.Servi
 builder.Services.AddScoped<OnlineQuiz.IServices.IAuthService, OnlineQuiz.Services.AuthService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IActivityLogService, OnlineQuiz.Services.ActivityLogService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.INotificationService, OnlineQuiz.Services.NotificationService>();
+builder.Services.AddScoped<OnlineQuiz.Services.IAnalyticsService, OnlineQuiz.Services.AnalyticsService>();
 
 // Register Background Services
 builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();

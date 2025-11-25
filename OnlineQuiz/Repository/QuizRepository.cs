@@ -114,5 +114,39 @@ namespace OnlineQuiz.Repository
                 .Get();
             return response.Models;
         }
+
+        public async Task<int> CountAsync()
+        {
+            var response = await _supabaseService.GetClient().From<Quiz>().Count(Postgrest.Constants.CountType.Exact);
+            return response;
+        }
+
+        public async Task<int> CountByCourseAsync(int courseId)
+        {
+            var response = await _supabaseService.GetClient().From<Quiz>()
+                .Where(q => q.CourseId == courseId)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return response;
+        }
+
+        public async Task<List<Quiz>> GetByCourseIdsAsync(List<int> courseIds)
+        {
+            if (!courseIds.Any()) return new List<Quiz>();
+
+            var response = await _supabaseService.GetClient().From<Quiz>()
+                .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
+                .Get();
+            return response.Models;
+        }
+
+        public async Task<int> CountByCourseIdsAsync(List<int> courseIds)
+        {
+            if (!courseIds.Any()) return 0;
+
+            var response = await _supabaseService.GetClient().From<Quiz>()
+                .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return response;
+        }
     }
 }

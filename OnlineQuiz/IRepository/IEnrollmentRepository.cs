@@ -8,5 +8,7 @@ namespace OnlineQuiz.IRepository
         Task<bool> ExistsAsync(int studentId, int courseId);
         Task<List<Enrollment>> GetByCourseIdAsync(int courseId);
         Task<bool> DeleteAsync(int enrollmentId);
+        Task<int> CountByCourseIdAsync(int courseId);
+        Task<Dictionary<int, int>> CountByCourseIdsAsync(List<int> courseIds);
     }
 }

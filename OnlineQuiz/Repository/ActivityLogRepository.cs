@@ -124,5 +124,15 @@ namespace OnlineQuiz.Repository
             var result = await baseQuery.Get();
             return result.Models;
         }
+
+        public async Task<List<ActivityLog>> GetRecentAsync(int limit)
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<ActivityLog>()
+                .Order("CreatedAt", Constants.Ordering.Descending)
+                .Limit(limit)
+                .Get();
+            return result.Models;
+        }
     }
 }

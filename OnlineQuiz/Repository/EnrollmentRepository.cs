@@ -42,5 +42,26 @@ namespace OnlineQuiz.Repository
                 .Delete();
             return true;
         }
+
+        public async Task<int> CountByCourseIdAsync(int courseId)
+        {
+            var count = await _supabaseService.GetClient().From<Enrollment>()
+                .Where(e => e.CourseId == courseId)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return count;
+        }
+
+        public async Task<Dictionary<int, int>> CountByCourseIdsAsync(List<int> courseIds)
+        {
+            if (!courseIds.Any()) return new Dictionary<int, int>();
+
+            var response = await _supabaseService.GetClient().From<Enrollment>()
+                .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
+                .Get();
+
+            return response.Models
+                .GroupBy(e => e.CourseId)
+                .ToDictionary(g => g.Key, g => g.Count());
+        }
     }
 }
