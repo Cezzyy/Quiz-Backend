@@ -85,6 +85,39 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Update a quiz (Teacher only - must be assigned to the course)
+        /// </summary>
+        /// <param name="quizId">Quiz ID</param>
+        /// <param name="updateQuizDto">Updated quiz data</param>
+        /// <param name="userId">Teacher ID (for authorization)</param>
+        /// <returns>Updated quiz details</returns>
+        [HttpPut("{quizId}")]
+        [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<QuizResponseDto>> UpdateQuiz(int quizId, [FromBody] UpdateQuizDto updateQuizDto, [FromQuery] int userId)
+        {
+            try
+            {
+                var quiz = await _quizService.UpdateQuizAsync(quizId, updateQuizDto, userId);
+                return Ok(quiz);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Delete a quiz (Admin or Course Instructor only)
         /// </summary>
         [HttpDelete("{quizId}")]
