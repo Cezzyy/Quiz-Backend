@@ -28,7 +28,7 @@ namespace OnlineQuiz.Services
         public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
         {
             // Validate role-specific requirements
-            if (createUserDto.RoleId == 3 && string.IsNullOrEmpty(createUserDto.StudentId))
+            if (createUserDto.RoleId == RoleConstants.Student && string.IsNullOrEmpty(createUserDto.StudentId))
             {
                 throw new ArgumentException("StudentId is required for students");
             }
@@ -68,7 +68,7 @@ namespace OnlineQuiz.Services
             // Create role-specific entity based on RoleId
             switch (createUserDto.RoleId)
             {
-                case 3: // Student
+                case RoleConstants.Student: // Student
                     var student = new Student
                     {
                         UserId = createdUser.UserId,
@@ -80,7 +80,7 @@ namespace OnlineQuiz.Services
                     await _studentRepository.CreateAsync(student);
                     break;
 
-                case 2: // Teacher
+                case RoleConstants.Teacher: // Teacher
                     var teacher = new Teacher
                     {
                         UserId = createdUser.UserId,
@@ -89,7 +89,7 @@ namespace OnlineQuiz.Services
                     await _teacherRepository.CreateAsync(teacher);
                     break;
 
-                case 1: // Admin - no additional table needed
+                case RoleConstants.Admin: // Admin - no additional table needed
                     break;
             }
 
@@ -132,7 +132,7 @@ namespace OnlineQuiz.Services
             // Populate role-specific data
             switch (userRole.RoleId)
             {
-                case 3: // Student
+                case RoleConstants.Student: // Student
                     var student = await _studentRepository.GetByUserIdAsync(userId);
                     if (student != null)
                     {
@@ -146,7 +146,7 @@ namespace OnlineQuiz.Services
                     }
                     break;
 
-                case 2: // Teacher
+                case RoleConstants.Teacher: // Teacher
                     var teacher = await _teacherRepository.GetByUserIdAsync(userId);
                     if (teacher != null)
                     {
@@ -209,7 +209,7 @@ namespace OnlineQuiz.Services
                 // Populate role-specific data
                 switch (userRole.RoleId)
                 {
-                    case 3: // Student
+                    case RoleConstants.Student: // Student
                         if (studentMap.TryGetValue(user.UserId, out var student))
                         {
                             response.Student = new StudentData
@@ -222,7 +222,7 @@ namespace OnlineQuiz.Services
                         }
                         break;
 
-                    case 2: // Teacher
+                    case RoleConstants.Teacher: // Teacher
                         if (teacherMap.TryGetValue(user.UserId, out var teacher))
                         {
                             response.Teacher = new TeacherData
@@ -277,7 +277,7 @@ namespace OnlineQuiz.Services
             // Update role-specific data
             switch (userRole.RoleId)
             {
-                case 3: // Student
+                case RoleConstants.Student: // Student
                     var student = await _studentRepository.GetByUserIdAsync(userId);
                     if (student != null)
                     {
@@ -294,7 +294,7 @@ namespace OnlineQuiz.Services
                     }
                     break;
 
-                case 2: // Teacher
+                case RoleConstants.Teacher: // Teacher
                     var teacher = await _teacherRepository.GetByUserIdAsync(userId);
                     if (teacher != null && updateUserDto.Department != null)
                     {
@@ -325,9 +325,9 @@ namespace OnlineQuiz.Services
         {
             return roleId switch
             {
-                1 => "Admin",
-                2 => "Teacher",
-                3 => "Student",
+                RoleConstants.Admin => "Admin",
+                RoleConstants.Teacher => "Teacher",
+                RoleConstants.Student => "Student",
                 _ => "Unknown"
             };
         }

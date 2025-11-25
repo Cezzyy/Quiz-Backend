@@ -1,0 +1,9 @@
+namespace OnlineQuiz.Utilities
+{
+    public static class RoleConstants
+    {
+        public const int Admin = 1;
+        public const int Teacher = 2;
+        public const int Student = 3;
+    }
+}

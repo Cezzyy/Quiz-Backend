@@ -3,6 +3,7 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Models;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Services
 {
@@ -178,7 +179,7 @@ namespace OnlineQuiz.Services
             {
                 // Check if user is Admin
                 var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
-                var isAdmin = userRoles.Any(ur => ur.RoleId == 1); // Assuming 1 is Admin Role ID
+                var isAdmin = userRoles.Any(ur => ur.RoleId == RoleConstants.Admin); // Assuming 1 is Admin Role ID
 
                 if (!isAdmin)
                 {
