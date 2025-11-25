@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 
@@ -76,6 +76,33 @@ namespace OnlineQuiz.Controllers
                 return NotFound(new { error = "Quiz not found" });
             }
             return Ok(quiz);
+        }
+        /// <summary>
+        /// Delete a quiz (Admin or Course Instructor only)
+        /// </summary>
+        [HttpDelete("{quizId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> DeleteQuiz(int quizId, [FromQuery] int userId)
+        {
+            try
+            {
+                var result = await _quizService.DeleteQuizAsync(quizId, userId);
+                if (!result)
+                {
+                    return NotFound(new { error = "Quiz not found" });
+                }
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
     }
 }

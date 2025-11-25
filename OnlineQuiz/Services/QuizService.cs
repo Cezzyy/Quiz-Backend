@@ -11,15 +11,21 @@ namespace OnlineQuiz.Services
         private readonly IQuizRepository _quizRepository;
         private readonly ICourseRepository _courseRepository;
         private readonly IEnrollmentRepository _enrollmentRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
 
         public QuizService(
             IQuizRepository quizRepository,
             ICourseRepository courseRepository,
-            IEnrollmentRepository enrollmentRepository)
+            IEnrollmentRepository enrollmentRepository,
+            IUserRepository userRepository,
+            IUserRoleRepository userRoleRepository)
         {
             _quizRepository = quizRepository;
             _courseRepository = courseRepository;
             _enrollmentRepository = enrollmentRepository;
+            _userRepository = userRepository;
+            _userRoleRepository = userRoleRepository;
         }
 
         public async Task<QuizResponseDto> CreateQuizAsync(CreateQuizDto createQuizDto)
@@ -138,6 +144,36 @@ namespace OnlineQuiz.Services
             }
 
             return response;
+        }
+
+        public async Task<bool> DeleteQuizAsync(int quizId, int userId)
+        {
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                return false;
+            }
+
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException("Quiz belongs to a non-existent course");
+            }
+
+            // Check if user is the instructor
+            if (course.InstructorId != userId)
+            {
+                // Check if user is Admin
+                var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+                var isAdmin = userRoles.Any(ur => ur.RoleId == 1); // Assuming 1 is Admin Role ID
+
+                if (!isAdmin)
+                {
+                    throw new UnauthorizedAccessException("Only the assigned instructor or an admin can delete quizzes");
+                }
+            }
+
+            return await _quizRepository.DeleteAsync(quizId);
         }
     }
 }
