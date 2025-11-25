@@ -219,6 +219,44 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<PagedResult<AttemptResponseDto>> GetAttemptsForQuizPagedAsync(int quizId, int teacherId, PaginationParams paginationParams)
+        {
+            var allAttempts = await GetAttemptsForQuizAsync(quizId, teacherId);
+
+            var totalCount = allAttempts.Count;
+            var paginatedAttempts = allAttempts
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<AttemptResponseDto>
+            {
+                Items = paginatedAttempts,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<PagedResult<AttemptResponseDto>> GetAttemptsForStudentPagedAsync(int studentId, PaginationParams paginationParams)
+        {
+            var allAttempts = await GetAttemptsForStudentAsync(studentId);
+
+            var totalCount = allAttempts.Count;
+            var paginatedAttempts = allAttempts
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<AttemptResponseDto>
+            {
+                Items = paginatedAttempts,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
         public async Task<AttemptResponseDto> SubmitAttemptAsync(int attemptId, SubmitAttemptDto submitAttemptDto, int studentId)
         {
             var attempt = await _attemptRepository.GetByIdAsync(attemptId);

@@ -94,6 +94,28 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get all users with pagination
+        /// </summary>
+        /// <param name="pageNumber">Page number (default: 1)</param>
+        /// <param name="pageSize">Page size (default: 10, max: 100)</param>
+        /// <returns>Paginated list of users</returns>
+        [HttpGet("paged")]
+        [ProducesResponseType(typeof(PagedResult<UserResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<UserResponseDto>>> GetAllUsersPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _userService.GetAllUsersPagedAsync(paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving users", details = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get a specific user by ID
         /// </summary>
         /// <param name="id">User ID</param>

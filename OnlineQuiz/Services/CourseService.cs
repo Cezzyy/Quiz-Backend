@@ -333,6 +333,63 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<PagedResult<CourseResponseDto>> GetAllCoursesPagedAsync(PaginationParams paginationParams)
+        {
+            var allCourses = await GetAllCoursesAsync();
+            
+            var totalCount = allCourses.Count;
+            var items = allCourses
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<CourseResponseDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<PagedResult<CourseResponseDto>> GetCoursesForTeacherPagedAsync(int teacherId, PaginationParams paginationParams)
+        {
+            var allCourses = await GetCoursesForTeacherAsync(teacherId);
+            
+            var totalCount = allCourses.Count;
+            var items = allCourses
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<CourseResponseDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<PagedResult<CourseResponseDto>> GetCoursesForStudentPagedAsync(int studentId, PaginationParams paginationParams)
+        {
+            var allCourses = await GetCoursesForStudentAsync(studentId);
+            
+            var totalCount = allCourses.Count;
+            var items = allCourses
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<CourseResponseDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
         public async Task<int> BulkDeleteCoursesAsync(List<int> courseIds)
         {
             if (!courseIds.Any()) return 0;

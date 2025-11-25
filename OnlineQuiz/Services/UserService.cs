@@ -259,6 +259,26 @@ namespace OnlineQuiz.Services
             return userResponses;
         }
 
+        public async Task<PagedResult<UserResponseDto>> GetAllUsersPagedAsync(PaginationParams paginationParams)
+        {
+            // Get all users first (we need total count)
+            var allUsers = await GetAllUsersAsync();
+            
+            var totalCount = allUsers.Count;
+            var items = allUsers
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<UserResponseDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
         public async Task<UserResponseDto> UpdateUserAsync(int userId, UpdateUserDto updateUserDto)
         {
             var user = await _userRepository.GetByIdAsync(userId);

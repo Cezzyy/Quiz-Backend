@@ -115,6 +115,49 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get all attempts for a quiz with pagination (Teacher only)
+        /// </summary>
+        [HttpGet("quiz/{quizId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<AttemptResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<PagedResult<AttemptResponseDto>>> GetAttemptsForQuizPaged(int quizId, [FromQuery] int teacherId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _attemptService.GetAttemptsForQuizPagedAsync(quizId, teacherId, paginationParams);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving attempts", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all attempts for a student with pagination
+        /// </summary>
+        [HttpGet("student/{studentId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<AttemptResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<AttemptResponseDto>>> GetAttemptsForStudentPaged(int studentId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _attemptService.GetAttemptsForStudentPagedAsync(studentId, paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving attempts", details = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Submit a quiz attempt (Student only)
         /// </summary>
         [HttpPut("{attemptId}/submit")]

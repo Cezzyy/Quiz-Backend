@@ -93,6 +93,30 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get quizzes for a course with pagination
+        /// </summary>
+        [HttpGet("course/{courseId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<QuizResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<PagedResult<QuizResponseDto>>> GetQuizzesForCoursePaged(int courseId, [FromQuery] int userId, [FromQuery] bool isStudent, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _quizService.GetQuizzesForCoursePagedAsync(courseId, userId, isStudent, paginationParams);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving quizzes", details = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get a specific quiz by ID
         /// </summary>
         [HttpGet("{quizId}")]
