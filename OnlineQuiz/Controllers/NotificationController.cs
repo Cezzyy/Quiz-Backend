@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -113,6 +114,7 @@ namespace OnlineQuiz.Controllers
             return CreatedAtAction(nameof(GetNotification), new { id = notification.NotificationId }, notification);
         }
         [HttpDelete("bulk")]
+        [EnableRateLimiting("bulk-operations")]
         public async Task<ActionResult> BulkDeleteNotifications([FromBody] BulkDeleteNotificationsDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");

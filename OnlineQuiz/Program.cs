@@ -1,11 +1,13 @@
 using DotNetEnv;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using OnlineQuiz.Mappings;
 using OnlineQuiz.Services;
 using Scalar.AspNetCore;
 using System.Text;
+using System.Threading.RateLimiting;
 
 // Load environment variables from .env file
 Env.Load();
@@ -115,7 +117,117 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IExportImportLogService, OnlineQ
 // Register Background Services
 builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();
 
+// Configure Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Global rate limiter - applies to all endpoints by default
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        // Extract user identifier (authenticated user ID or IP address)
+        var userId = context.User?.FindFirst("userId")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: userId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
+            });
+    });
 
+    // Authentication endpoints - stricter limits to prevent brute force
+    options.AddPolicy("auth", context =>
+    {
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ipAddress,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 2
+            });
+    });
+
+    // File upload/export endpoints - lower limits for resource-intensive operations
+    options.AddPolicy("file-operations", context =>
+    {
+        var userId = context.User?.FindFirst("userId")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: userId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 3
+            });
+    });
+
+    // Bulk operations - moderate limits
+    options.AddPolicy("bulk-operations", context =>
+    {
+        var userId = context.User?.FindFirst("userId")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: userId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 5
+            });
+    });
+
+    // Quiz attempt submissions - moderate limits
+    options.AddPolicy("quiz-submission", context =>
+    {
+        var userId = context.User?.FindFirst("userId")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: userId,
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 2,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 5
+            });
+    });
+
+    // Configure rejection response
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = retryAfter.TotalSeconds.ToString();
+            
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                error = "Too many requests",
+                message = "Rate limit exceeded. Please try again later.",
+                retryAfterSeconds = retryAfter.TotalSeconds
+            }, cancellationToken);
+        }
+        else
+        {
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                error = "Too many requests",
+                message = "Rate limit exceeded. Please try again later."
+            }, cancellationToken);
+        }
+    };
+});
 
 // Configure CORS for Web (Vue) and Mobile (Flutter)
 builder.Services.AddCors(options =>
@@ -193,6 +305,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowWebAndMobile");
+
+// Enable rate limiting
+app.UseRateLimiter();
 
 // Add security headers
 app.Use(async (context, next) =>

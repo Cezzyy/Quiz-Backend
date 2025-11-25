@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -267,6 +268,7 @@ namespace OnlineQuiz.Controllers
         /// Bulk delete quizzes (Course instructor or admin)
         /// </summary>
         [HttpDelete("bulk")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

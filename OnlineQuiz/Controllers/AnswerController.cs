@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 
@@ -45,6 +46,7 @@ namespace OnlineQuiz.Controllers
         /// Record multiple answers for an attempt (Student only)
         /// </summary>
         [HttpPost("bulk")]
+        [EnableRateLimiting("quiz-submission")]
         [ProducesResponseType(typeof(List<AnswerResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

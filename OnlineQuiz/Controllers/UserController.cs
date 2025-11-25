@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -251,6 +252,7 @@ namespace OnlineQuiz.Controllers
         /// </summary>
         [HttpDelete("bulk")]
         [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult> BulkDeleteUsers([FromBody] BulkDeleteUsersDto dto)
@@ -294,6 +296,7 @@ namespace OnlineQuiz.Controllers
         /// <returns>Import results with success/failure details</returns>
         [HttpPost("bulk-import")]
         [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("file-operations")]
         [ProducesResponseType(typeof(BulkUserImportResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BulkUserImportResultDto>> BulkImportUsers(IFormFile file)

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -161,6 +162,7 @@ namespace OnlineQuiz.Controllers
         /// Submit a quiz attempt (Student only)
         /// </summary>
         [HttpPut("{attemptId}/submit")]
+        [EnableRateLimiting("quiz-submission")]
         [ProducesResponseType(typeof(AttemptResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -240,6 +242,7 @@ namespace OnlineQuiz.Controllers
         /// Bulk delete attempts (Teacher for their courses, Student for own unsubmitted)
         /// </summary>
         [HttpDelete("bulk")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -288,6 +291,7 @@ namespace OnlineQuiz.Controllers
         /// Export quiz scores to Excel (Admin or Teacher only)
         /// </summary>
         [HttpGet("export")]
+        [EnableRateLimiting("file-operations")]
         [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

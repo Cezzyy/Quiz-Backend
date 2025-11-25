@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -329,6 +330,7 @@ namespace OnlineQuiz.Controllers
         /// </summary>
         [HttpDelete("bulk")]
         [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult> BulkDeleteCourses([FromBody] BulkDeleteCoursesDto dto)
