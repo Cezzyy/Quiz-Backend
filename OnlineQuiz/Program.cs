@@ -41,9 +41,18 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.IUserRepository, OnlineQuiz.Re
 builder.Services.AddScoped<OnlineQuiz.IRepository.IStudentRepository, OnlineQuiz.Repository.StudentRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.ITeacherRepository, OnlineQuiz.Repository.TeacherRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IUserRoleRepository, OnlineQuiz.Repository.UserRoleRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.ICourseRepository, OnlineQuiz.Repository.CourseRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IQuizRepository, OnlineQuiz.Repository.QuizRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IEnrollmentRepository, OnlineQuiz.Repository.EnrollmentRepository>();
 
 // Register Service Layer
 builder.Services.AddScoped<OnlineQuiz.IServices.IUserService, OnlineQuiz.Services.UserService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.ICourseService, OnlineQuiz.Services.CourseService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IQuizService, OnlineQuiz.Services.QuizService>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IAttemptRepository, OnlineQuiz.Repository.AttemptRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IAttemptAnswerRepository, OnlineQuiz.Repository.AttemptAnswerRepository>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IAttemptService, OnlineQuiz.Services.AttemptService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IAnswerService, OnlineQuiz.Services.AnswerService>();
 
 
 // Configure CORS for Web (Vue) and Mobile (Flutter)
@@ -139,6 +148,10 @@ app.Use(async (context, next) =>
     
     await next();
 });
+
+
+
+
 
 app.UseAuthorization();
 

@@ -8,5 +8,6 @@ namespace OnlineQuiz.IRepository
         Task<List<UserRole>> GetByUserIdAsync(int userId);
         Task<List<UserRole>> GetAllAsync();
         Task<bool> DeleteByUserIdAsync(int userId);
+        Task<bool> IsAdminAsync(int userId);
     }
 }
