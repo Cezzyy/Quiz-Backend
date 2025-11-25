@@ -11,10 +11,12 @@ namespace OnlineQuiz.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IActivityLogService _activityLogService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IActivityLogService activityLogService)
         {
             _authService = authService;
+            _activityLogService = activityLogService;
         }
 
         /// <summary>
@@ -56,6 +58,26 @@ namespace OnlineQuiz.Controllers
                 Response.Cookies.Append("jwt", loginResponse.Token, cookieOptions);
                 Console.WriteLine($"JWT token stored in cookie for user: {loginResponse.User.Email}");
 
+                // Log the LOGIN activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = loginResponse.User.UserId,
+                        Action = ActivityLogConstants.Actions.LOGIN,
+                        Entity = ActivityLogConstants.Entities.Auth,
+                        Description = $"User {loginResponse.User.Email} logged in successfully",
+                        NewValues = new { Email = loginResponse.User.Email, Role = loginResponse.User.RoleName },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    // Don't fail the login if logging fails
+                    Console.WriteLine($"Failed to log LOGIN activity: {logEx.Message}");
+                }
+
                 return Ok(loginResponse);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("inactive"))
@@ -75,11 +97,36 @@ namespace OnlineQuiz.Controllers
         [HttpPost("logout")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
+            // Extract user ID from JWT token
+            var userId = JwtTokenGenerator.GetUserId(User);
+
             // Delete the JWT cookie
             Response.Cookies.Delete("jwt");
             Console.WriteLine("JWT cookie deleted");
+
+            // Log the LOGOUT activity
+            if (userId.HasValue)
+            {
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId.Value,
+                        Action = ActivityLogConstants.Actions.LOGOUT,
+                        Entity = ActivityLogConstants.Entities.Auth,
+                        Description = "User logged out",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    // Don't fail the logout if logging fails
+                    Console.WriteLine($"Failed to log LOGOUT activity: {logEx.Message}");
+                }
+            }
             
             return Ok(new { message = "Logout successful. Token removed from cookies." });
         }

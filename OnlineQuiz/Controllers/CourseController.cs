@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Controllers
 {
@@ -11,10 +12,12 @@ namespace OnlineQuiz.Controllers
     public class CourseController : ControllerBase
     {
         private readonly ICourseService _courseService;
+        private readonly IActivityLogService _activityLogService;
 
-        public CourseController(ICourseService courseService)
+        public CourseController(ICourseService courseService, IActivityLogService activityLogService)
         {
             _courseService = courseService;
+            _activityLogService = activityLogService;
         }
 
         /// <summary>
@@ -28,6 +31,27 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var course = await _courseService.CreateCourseAsync(createCourseDto);
+
+                // Log the CREATE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = createCourseDto.CreatedBy,
+                        Action = ActivityLogConstants.Actions.CREATE,
+                        Entity = ActivityLogConstants.Entities.Course,
+                        EntityId = course.CourseId,
+                        Description = $"Created course {course.Code} - {course.Name}",
+                        NewValues = new { course.CourseId, course.Code, course.Name, course.InstructorId, course.Status },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log CREATE activity: {logEx.Message}");
+                }
+
                 return CreatedAtAction(nameof(GetCoursesForTeacher), new { teacherId = course.InstructorId }, course);
             }
             catch (Exception ex)
@@ -144,7 +168,32 @@ namespace OnlineQuiz.Controllers
         {
             try
             {
+                // Note: We don't have easy access to old course data here without an extra query
+                // For performance, we might skip old values or fetch if critical
+                
                 var course = await _courseService.UpdateCourseAsync(courseId, updateCourseDto);
+
+                // Log the UPDATE activity
+                try
+                {
+                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Course,
+                        EntityId = courseId,
+                        Description = $"Updated course {course.Code} - {course.Name}",
+                        NewValues = new { course.Code, course.Name, course.InstructorId, course.Status },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log UPDATE activity: {logEx.Message}");
+                }
+
                 return Ok(course);
             }
             catch (ArgumentException ex)
@@ -172,6 +221,27 @@ namespace OnlineQuiz.Controllers
                 {
                     return NotFound(new { error = "Course not found" });
                 }
+
+                // Log the DELETE activity
+                try
+                {
+                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.Course,
+                        EntityId = courseId,
+                        Description = $"Deleted course {courseId}",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log DELETE activity: {logEx.Message}");
+                }
+
                 return NoContent();
             }
             catch (Exception ex)
