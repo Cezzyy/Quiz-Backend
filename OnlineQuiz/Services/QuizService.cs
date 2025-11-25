@@ -135,6 +135,25 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<PagedResult<QuizResponseDto>> GetQuizzesForCoursePagedAsync(int courseId, int userId, bool isStudent, PaginationParams paginationParams)
+        {
+            var allQuizzes = await GetQuizzesForCourseAsync(courseId, userId, isStudent);
+
+            var totalCount = allQuizzes.Count;
+            var paginatedQuizzes = allQuizzes
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<QuizResponseDto>
+            {
+                Items = paginatedQuizzes,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
         public async Task<QuizResponseDto?> GetQuizByIdAsync(int quizId)
         {
             var quiz = await _quizRepository.GetByIdAsync(quizId);

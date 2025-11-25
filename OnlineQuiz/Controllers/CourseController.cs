@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -119,6 +120,63 @@ namespace OnlineQuiz.Controllers
                 return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
+        }
+
+        /// <summary>
+        /// Get all courses with pagination
+        /// </summary>
+        [HttpGet("paged")]
+        [ProducesResponseType(typeof(PagedResult<CourseResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<CourseResponseDto>>> GetAllCoursesPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _courseService.GetAllCoursesPagedAsync(paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving courses", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get courses for a teacher with pagination
+        /// </summary>
+        [HttpGet("teacher/{teacherId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<CourseResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<CourseResponseDto>>> GetCoursesForTeacherPaged(int teacherId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _courseService.GetCoursesForTeacherPagedAsync(teacherId, paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving courses", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get courses for a student with pagination
+        /// </summary>
+        [HttpGet("student/{studentId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<CourseResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<CourseResponseDto>>> GetCoursesForStudentPaged(int studentId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _courseService.GetCoursesForStudentPagedAsync(studentId, paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving courses", details = ex.Message });
+            }
         }
 
         /// <summary>
@@ -272,6 +330,7 @@ namespace OnlineQuiz.Controllers
         /// </summary>
         [HttpDelete("bulk")]
         [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult> BulkDeleteCourses([FromBody] BulkDeleteCoursesDto dto)

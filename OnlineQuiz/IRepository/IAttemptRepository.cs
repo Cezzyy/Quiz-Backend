@@ -16,5 +16,6 @@ namespace OnlineQuiz.IRepository
         Task<Dictionary<int, double>> GetAverageScoresByCourseIdsAsync(List<int> courseIds);
         Task<List<Attempt>> GetByQuizIdsAndStudentIdAsync(List<int> quizIds, int studentId);
         Task<int> BulkDeleteAsync(List<int> attemptIds);
+        Task<List<Attempt>> GetAllAttemptsForExportAsync(int? quizId, int? courseId);
     }
 }

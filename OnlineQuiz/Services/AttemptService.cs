@@ -13,19 +13,25 @@ namespace OnlineQuiz.Services
         private readonly ICourseRepository _courseRepository;
         private readonly IEnrollmentRepository _enrollmentRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
+        private readonly IAttemptAnswerRepository _answerRepository;
 
         public AttemptService(
             IAttemptRepository attemptRepository,
             IQuizRepository quizRepository,
             ICourseRepository courseRepository,
             IEnrollmentRepository enrollmentRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IUserRoleRepository userRoleRepository,
+            IAttemptAnswerRepository answerRepository)
         {
             _attemptRepository = attemptRepository;
             _quizRepository = quizRepository;
             _courseRepository = courseRepository;
             _enrollmentRepository = enrollmentRepository;
             _userRepository = userRepository;
+            _userRoleRepository = userRoleRepository;
+            _answerRepository = answerRepository;
         }
 
         public async Task<AttemptResponseDto> StartAttemptAsync(StartAttemptDto startAttemptDto)
@@ -213,6 +219,44 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<PagedResult<AttemptResponseDto>> GetAttemptsForQuizPagedAsync(int quizId, int teacherId, PaginationParams paginationParams)
+        {
+            var allAttempts = await GetAttemptsForQuizAsync(quizId, teacherId);
+
+            var totalCount = allAttempts.Count;
+            var paginatedAttempts = allAttempts
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<AttemptResponseDto>
+            {
+                Items = paginatedAttempts,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<PagedResult<AttemptResponseDto>> GetAttemptsForStudentPagedAsync(int studentId, PaginationParams paginationParams)
+        {
+            var allAttempts = await GetAttemptsForStudentAsync(studentId);
+
+            var totalCount = allAttempts.Count;
+            var paginatedAttempts = allAttempts
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<AttemptResponseDto>
+            {
+                Items = paginatedAttempts,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
         public async Task<AttemptResponseDto> SubmitAttemptAsync(int attemptId, SubmitAttemptDto submitAttemptDto, int studentId)
         {
             var attempt = await _attemptRepository.GetByIdAsync(attemptId);
@@ -243,8 +287,11 @@ namespace OnlineQuiz.Services
                 }
             }
 
+            // Calculate score server-side based on correct answers
+            var calculatedScore = await CalculateScoreAsync(attemptId, attempt.QuizId);
+
             attempt.SubmittedAt = DateTime.UtcNow;
-            attempt.Score = submitAttemptDto.Score;
+            attempt.Score = calculatedScore;
             attempt.TimeSpentSeconds = submitAttemptDto.TimeSpentSeconds;
 
             var updatedAttempt = await _attemptRepository.UpdateAsync(attempt);
@@ -358,6 +405,267 @@ namespace OnlineQuiz.Services
 
             // All checks passed, proceed with bulk delete
             return await _attemptRepository.BulkDeleteAsync(attemptIds);
+        }
+
+        public async Task<(byte[] FileContent, string FileName)> ExportQuizScoresToExcelAsync(int userId, int? quizId, int? courseId)
+        {
+            // Verify user authorization
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException($"User with ID {userId} not found");
+            }
+
+            // Check authorization based on filters
+            if (quizId.HasValue)
+            {
+                var quiz = await _quizRepository.GetByIdAsync(quizId.Value);
+                if (quiz == null)
+                {
+                    throw new ArgumentException($"Quiz with ID {quizId} not found");
+                }
+
+                var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+                if (course != null && course.InstructorUserId != userId)
+                {
+                    // Not the instructor, must be admin
+                    var userRoles = await GetUserRolesAsync(userId);
+                    if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                    {
+                        throw new UnauthorizedAccessException("Only the course instructor or admin can export this quiz's scores");
+                    }
+                }
+            }
+            else if (courseId.HasValue)
+            {
+                var course = await _courseRepository.GetByIdAsync(courseId.Value);
+                if (course == null)
+                {
+                    throw new ArgumentException($"Course with ID {courseId} not found");
+                }
+
+                if (course.InstructorUserId != userId)
+                {
+                    // Not the instructor, must be admin
+                    var userRoles = await GetUserRolesAsync(userId);
+                    if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                    {
+                        throw new UnauthorizedAccessException("Only the course instructor or admin can export this course's scores");
+                    }
+                }
+            }
+            else
+            {
+                // No filter - admin only
+                var userRoles = await GetUserRolesAsync(userId);
+                if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                {
+                    throw new UnauthorizedAccessException("Only administrators can export all scores");
+                }
+            }
+
+            // Fetch attempts with filters
+            var attempts = await _attemptRepository.GetAllAttemptsForExportAsync(quizId, courseId);
+
+            if (!attempts.Any())
+            {
+                throw new InvalidOperationException("No submitted attempts found for the specified filters");
+            }
+
+            // Collect related data
+            var quizIds = attempts.Select(a => a.QuizId).Distinct().ToList();
+            var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
+
+            var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
+            var users = await _userRepository.GetByIdsAsync(userIds);
+            
+            var courseIds = quizzes.Select(q => q.CourseId).Distinct().ToList();
+            var courses = new Dictionary<int, Course>();
+            foreach (var cId in courseIds)
+            {
+                var c = await _courseRepository.GetByIdAsync(cId);
+                if (c != null) courses[cId] = c;
+            }
+
+            // Prepare data for export
+            var exportData = new List<ScoreExportDataDto>();
+            var quizMap = quizzes.ToDictionary(q => q.QuizId);
+            var userMap = users.ToDictionary(u => u.UserId);
+
+            foreach (var attempt in attempts)
+            {
+                var quiz = quizMap.GetValueOrDefault(attempt.QuizId);
+                var student = userMap.GetValueOrDefault(attempt.UserId);
+                var course = quiz != null ? courses.GetValueOrDefault(quiz.CourseId) : null;
+
+                // Get student ID from Student table
+                var studentRecord = await _userRepository.GetByIdAsync(attempt.UserId);
+                string studentId = studentRecord?.Email ?? "N/A";
+
+                exportData.Add(new ScoreExportDataDto
+                {
+                    StudentId = studentId,
+                    StudentName = student?.FullName ?? "Unknown",
+                    StudentEmail = student?.Email ?? "N/A",
+                    QuizTitle = quiz?.Title ?? "Unknown",
+                    CourseName = course?.Name ?? "Unknown",
+                    Score = attempt.Score,
+                    StartedAt = attempt.StartedAt,
+                    SubmittedAt = attempt.SubmittedAt,
+                    TimeSpentMinutes = attempt.TimeSpentSeconds.HasValue ? attempt.TimeSpentSeconds.Value / 60 : null
+                });
+            }
+
+            // Generate Excel file
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Quiz Scores");
+
+            // Add headers
+            worksheet.Cell(1, 1).Value = "Student ID";
+            worksheet.Cell(1, 2).Value = "Student Name";
+            worksheet.Cell(1, 3).Value = "Student Email";
+            worksheet.Cell(1, 4).Value = "Quiz Title";
+            worksheet.Cell(1, 5).Value = "Course Name";
+            worksheet.Cell(1, 6).Value = "Score";
+            worksheet.Cell(1, 7).Value = "Started At";
+            worksheet.Cell(1, 8).Value = "Submitted At";
+            worksheet.Cell(1, 9).Value = "Time Spent (Minutes)";
+
+            // Style headers
+            var headerRow = worksheet.Row(1);
+            headerRow.Style.Font.Bold = true;
+            headerRow.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+
+            // Add data rows
+            int row = 2;
+            foreach (var data in exportData)
+            {
+                worksheet.Cell(row, 1).Value = data.StudentId;
+                worksheet.Cell(row, 2).Value = data.StudentName;
+                worksheet.Cell(row, 3).Value = data.StudentEmail;
+                worksheet.Cell(row, 4).Value = data.QuizTitle;
+                worksheet.Cell(row, 5).Value = data.CourseName;
+                worksheet.Cell(row, 6).Value = (double)data.Score;
+                worksheet.Cell(row, 7).Value = data.StartedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 8).Value = data.SubmittedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A";
+                worksheet.Cell(row, 9).Value = data.TimeSpentMinutes?.ToString() ?? "N/A";
+                row++;
+            }
+
+            // Auto-fit columns
+            worksheet.Columns().AdjustToContents();
+
+            // Save to memory stream
+            using var stream = new System.IO.MemoryStream();
+            workbook.SaveAs(stream);
+            var fileContent = stream.ToArray();
+
+            // Generate filename
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            string fileName;
+            if (quizId.HasValue)
+            {
+                var quiz = quizMap.GetValueOrDefault(quizId.Value);
+                fileName = $"Quiz_Scores_{quiz?.Title ?? "Unknown"}_{timestamp}.xlsx";
+            }
+            else if (courseId.HasValue)
+            {
+                var course = courses.GetValueOrDefault(courseId.Value);
+                fileName = $"Course_Scores_{course?.Name ?? "Unknown"}_{timestamp}.xlsx";
+            }
+            else
+            {
+                fileName = $"All_Quiz_Scores_{timestamp}.xlsx";
+            }
+
+            // Sanitize filename
+            fileName = string.Join("_", fileName.Split(System.IO.Path.GetInvalidFileNameChars()));
+
+            return (fileContent, fileName);
+        }
+
+        private async Task<List<int>> GetUserRolesAsync(int userId)
+        {
+            var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+            return userRoles.Select(ur => ur.RoleId).ToList();
+        }
+
+        /// <summary>
+        /// Calculate score by comparing student answers against correct choices
+        /// </summary>
+        private async Task<decimal> CalculateScoreAsync(int attemptId, int quizId)
+        {
+            // 1. Fetch all answers for this attempt
+            var answers = await _answerRepository.GetByAttemptIdAsync(attemptId);
+            
+            if (!answers.Any())
+            {
+                return 0; // No answers submitted
+            }
+
+            // 2. Fetch all questions for this quiz
+            var questions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
+            
+            if (!questions.Any())
+            {
+                return 0; // No questions in quiz
+            }
+
+            // 3. Fetch all choices for these questions
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            
+            // 4. Group choices by question for fast lookup
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            
+            // 5. Create question lookup
+            var questionMap = questions.ToDictionary(q => q.QuestionId);
+
+            decimal earnedPoints = 0;
+            decimal totalPoints = questions.Sum(q => q.Points);
+
+            // 6. Grade each answer
+            foreach (var answer in answers)
+            {
+                if (!questionMap.TryGetValue(answer.QuestionId, out var question))
+                {
+                    continue; // Question not found, skip
+                }
+
+                bool isCorrect = false;
+
+                // Grade based on question type
+                if (question.Type == "Single" || question.Type == "Multiple")
+                {
+                    // Check if student's choice is marked as correct
+                    if (answer.ChoiceId.HasValue && choicesMap.TryGetValue(question.QuestionId, out var choices))
+                    {
+                        var selectedChoice = choices.FirstOrDefault(c => c.ChoiceId == answer.ChoiceId.Value);
+                        isCorrect = selectedChoice?.IsCorrect ?? false;
+                    }
+                }
+                // Text questions default to false (require manual grading)
+                // Can be extended with keyword matching or other logic
+
+                // 7. Update IsCorrect in database
+                answer.IsCorrect = isCorrect;
+                await _answerRepository.UpdateAsync(answer);
+
+                // 8. Add points if correct
+                if (isCorrect)
+                {
+                    earnedPoints += question.Points;
+                }
+            }
+
+            // 9. Calculate percentage score (0-100)
+            if (totalPoints == 0)
+            {
+                return 0;
+            }
+
+            return Math.Round((earnedPoints / totalPoints) * 100, 2);
         }
     }
 }

@@ -163,5 +163,47 @@ namespace OnlineQuiz.Repository
                 .Delete();
             return attemptIds.Count;
         }
+
+        public async Task<List<Attempt>> GetAllAttemptsForExportAsync(int? quizId, int? courseId)
+        {
+            var client = _supabaseService.GetClient();
+
+            // If quizId is provided, filter by that specific quiz
+            if (quizId.HasValue)
+            {
+                var result = await client.From<Attempt>()
+                    .Where(a => a.QuizId == quizId.Value && a.SubmittedAt != null)
+                    .Order("SubmittedAt", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+                return result.Models;
+            }
+
+            // If courseId is provided, get all quizzes for that course first
+            if (courseId.HasValue)
+            {
+                var quizzes = await client.From<Quiz>()
+                    .Where(q => q.CourseId == courseId.Value)
+                    .Select("QuizId")
+                    .Get();
+                
+                var quizIds = quizzes.Models.Select(q => q.QuizId).ToList();
+                
+                if (!quizIds.Any()) return new List<Attempt>();
+
+                var result = await client.From<Attempt>()
+                    .Filter("QuizId", Postgrest.Constants.Operator.In, quizIds)
+                    .Where(a => a.SubmittedAt != null)
+                    .Order("SubmittedAt", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+                return result.Models;
+            }
+
+            // No filter - return all submitted attempts
+            var allResult = await client.From<Attempt>()
+                .Where(a => a.SubmittedAt != null)
+                .Order("SubmittedAt", Postgrest.Constants.Ordering.Descending)
+                .Get();
+            return allResult.Models;
+        }
     }
 }

@@ -13,9 +13,10 @@ namespace OnlineQuiz.DTOs
 
     public class SubmitAttemptDto
     {
-        public decimal Score { get; set; }
+        // Score removed - calculated server-side to prevent manipulation
         public int TimeSpentSeconds { get; set; }
     }
+
 
     public class AttemptResponseDto
     {

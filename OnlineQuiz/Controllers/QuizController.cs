@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Utilities;
@@ -89,6 +90,30 @@ namespace OnlineQuiz.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get quizzes for a course with pagination
+        /// </summary>
+        [HttpGet("course/{courseId}/paged")]
+        [ProducesResponseType(typeof(PagedResult<QuizResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<PagedResult<QuizResponseDto>>> GetQuizzesForCoursePaged(int courseId, [FromQuery] int userId, [FromQuery] bool isStudent, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _quizService.GetQuizzesForCoursePagedAsync(courseId, userId, isStudent, paginationParams);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving quizzes", details = ex.Message });
             }
         }
 
@@ -243,6 +268,7 @@ namespace OnlineQuiz.Controllers
         /// Bulk delete quizzes (Course instructor or admin)
         /// </summary>
         [HttpDelete("bulk")]
+        [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
