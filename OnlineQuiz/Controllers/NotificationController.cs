@@ -112,5 +112,19 @@ namespace OnlineQuiz.Controllers
             var notification = await _notificationService.CreateNotificationAsync(createNotificationDto, userId);
             return CreatedAtAction(nameof(GetNotification), new { id = notification.NotificationId }, notification);
         }
+        [HttpDelete("bulk")]
+        public async Task<ActionResult> BulkDeleteNotifications([FromBody] BulkDeleteNotificationsDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            try
+            {
+                await _notificationService.BulkDeleteNotificationsAsync(dto.NotificationIds, userId);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

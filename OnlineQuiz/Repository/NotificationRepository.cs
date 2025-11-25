@@ -74,5 +74,18 @@ namespace OnlineQuiz.Repository
             var result = await client.From<Notification>().Insert(notifications);
             return result.Models;
         }
+
+        public async Task<int> BulkDeleteAsync(List<int> notificationIds)
+        {
+            if (notificationIds == null || !notificationIds.Any())
+                return 0;
+
+            var client = _supabaseService.GetClient();
+            await client.From<Notification>()
+                .Filter("NotificationId", Postgrest.Constants.Operator.In, notificationIds)
+                .Delete();
+            
+            return notificationIds.Count;
+        }
     }
 }

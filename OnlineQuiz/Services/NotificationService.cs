@@ -118,5 +118,43 @@ namespace OnlineQuiz.Services
 
             await _notificationRepository.CreateBatchAsync(notifications);
         }
+
+        public async Task<int> BulkDeleteNotificationsAsync(List<int> notificationIds, int userId)
+        {
+            if (!notificationIds.Any()) return 0;
+
+            // Verify ownership of all notifications
+            // Note: This might be slow for many notifications. 
+            // A more optimized way would be to delete where NotificationId IN ids AND UserId = userId
+            // But Supabase client might not support complex delete queries easily without raw SQL.
+            // For now, we'll fetch and verify or rely on repository to filter by userId if we add that method.
+            
+            // Better approach: Let's fetch the notifications first to verify ownership
+            // Or, we can just delete with a filter on UserId if we modify the repo method.
+            // Since we added BulkDeleteAsync(ids) to repo, let's stick to that but we should verify ownership.
+            
+            // Fetch notifications to verify ownership
+            // This is not efficient for large batches but ensures security.
+            // Alternatively, we could trust the client but that's bad.
+            
+            // Let's assume we can trust the repository to handle it if we pass userId, 
+            // but the interface I added only takes IDs.
+            // I will implement a check here.
+            
+            var notifications = new List<Notification>();
+            foreach(var id in notificationIds)
+            {
+                var n = await _notificationRepository.GetByIdAsync(id);
+                if (n != null && n.UserId == userId)
+                {
+                    notifications.Add(n);
+                }
+            }
+            
+            if (!notifications.Any()) return 0;
+            
+            var idsToDelete = notifications.Select(n => n.NotificationId).ToList();
+            return await _notificationRepository.BulkDeleteAsync(idsToDelete);
+        }
     }
 }
