@@ -28,6 +28,28 @@ namespace OnlineQuiz.Controllers
         {
             try
             {
+                // Validate against authenticated user identity
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) 
+                               ?? User.FindFirst("id") 
+                               ?? User.FindFirst("UserId");
+                
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    // Override the EnrolledBy field to ensure it matches the authenticated user
+                    enrollStudentDto.EnrolledBy = userId;
+                }
+                else
+                {
+                    // If we can't identify the user, we should probably fail or at least warn.
+                    // For now, if no auth is present (dev mode?), we might skip, but the requirement is strict.
+                    // Assuming auth is required for this endpoint:
+                    // return Unauthorized(new { error = "User identity could not be verified" });
+                    
+                    // However, if the project is in a state where auth isn't fully wired, this might break testing.
+                    // Given the prompt "Validate inputs against the authenticated user's identity", I will enforce it.
+                     return Unauthorized(new { error = "User identity could not be verified" });
+                }
+
                 var enrollment = await _courseService.EnrollStudentAsync(enrollStudentDto);
                 return CreatedAtAction(nameof(GetCourseEnrollments), new { courseId = enrollment.CourseId }, enrollment);
             }

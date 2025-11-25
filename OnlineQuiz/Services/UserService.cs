@@ -57,45 +57,54 @@ namespace OnlineQuiz.Services
             // Insert user
             var createdUser = await _userRepository.CreateAsync(user);
 
-            // Create UserRole entry
-            var userRole = new UserRole
+            try
             {
-                UserId = createdUser.UserId,
-                RoleId = createUserDto.RoleId
-            };
-            await _userRoleRepository.CreateAsync(userRole);
+                // Create UserRole entry
+                var userRole = new UserRole
+                {
+                    UserId = createdUser.UserId,
+                    RoleId = createUserDto.RoleId
+                };
+                await _userRoleRepository.CreateAsync(userRole);
 
-            // Create role-specific entity based on RoleId
-            switch (createUserDto.RoleId)
-            {
-                case RoleConstants.Student: // Student
-                    var student = new Student
-                    {
-                        UserId = createdUser.UserId,
-                        StudentId = createUserDto.StudentId!,
-                        YearLevel = createUserDto.YearLevel,
-                        Section = createUserDto.Section,
-                        Course = createUserDto.Course
-                    };
-                    await _studentRepository.CreateAsync(student);
-                    break;
+                // Create role-specific entity based on RoleId
+                switch (createUserDto.RoleId)
+                {
+                    case RoleConstants.Student: // Student
+                        var student = new Student
+                        {
+                            UserId = createdUser.UserId,
+                            StudentId = createUserDto.StudentId!,
+                            YearLevel = createUserDto.YearLevel,
+                            Section = createUserDto.Section,
+                            Course = createUserDto.Course
+                        };
+                        await _studentRepository.CreateAsync(student);
+                        break;
 
-                case RoleConstants.Teacher: // Teacher
-                    var teacher = new Teacher
-                    {
-                        UserId = createdUser.UserId,
-                        Department = createUserDto.Department
-                    };
-                    await _teacherRepository.CreateAsync(teacher);
-                    break;
+                    case RoleConstants.Teacher: // Teacher
+                        var teacher = new Teacher
+                        {
+                            UserId = createdUser.UserId,
+                            Department = createUserDto.Department
+                        };
+                        await _teacherRepository.CreateAsync(teacher);
+                        break;
 
-                case RoleConstants.Admin: // Admin - no additional table needed
-                    break;
+                    case RoleConstants.Admin: // Admin - no additional table needed
+                        break;
+                }
+
+                // Return the created user
+                return await GetUserByIdAsync(createdUser.UserId) 
+                    ?? throw new InvalidOperationException("Failed to retrieve created user");
             }
-
-            // Return the created user
-            return await GetUserByIdAsync(createdUser.UserId) 
-                ?? throw new InvalidOperationException("Failed to retrieve created user");
+            catch (Exception)
+            {
+                // Manual Rollback: Delete the partially created user
+                await _userRepository.DeleteAsync(createdUser.UserId);
+                throw; // Re-throw the original exception
+            }
         }
 
         public async Task<UserResponseDto?> GetUserByIdAsync(int userId)

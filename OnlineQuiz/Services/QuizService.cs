@@ -104,7 +104,7 @@ namespace OnlineQuiz.Services
                 if (course != null && course.InstructorUserId != userId)
                 {
                     // Allow admin? For now strict teacher check
-                    // throw new UnauthorizedAccessException("Teacher is not assigned to this course");
+                    throw new UnauthorizedAccessException("Teacher is not assigned to this course");
                 }
             }
 
