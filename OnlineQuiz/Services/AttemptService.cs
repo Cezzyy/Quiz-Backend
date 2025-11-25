@@ -80,7 +80,25 @@ namespace OnlineQuiz.Services
                 return null;
             }
 
-            var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+            // Authorization: User must own the attempt OR be the course instructor
+            if (attempt.UserId != userId)
+            {
+                var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+                if (quiz != null)
+                {
+                    var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+                    if (course == null || course.InstructorUserId != userId)
+                    {
+                        throw new UnauthorizedAccessException("You do not have permission to view this attempt");
+                    }
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to view this attempt");
+                }
+            }
+
+            var quizData = await _quizRepository.GetByIdAsync(attempt.QuizId);
             var student = await _userRepository.GetByIdAsync(attempt.UserId);
 
             return new AttemptResponseDto
@@ -89,7 +107,7 @@ namespace OnlineQuiz.Services
                 UserId = attempt.UserId,
                 StudentName = student?.FullName,
                 QuizId = attempt.QuizId,
-                QuizTitle = quiz?.Title,
+                QuizTitle = quizData?.Title,
                 StartedAt = attempt.StartedAt,
                 SubmittedAt = attempt.SubmittedAt,
                 Score = attempt.Score,
@@ -213,12 +231,24 @@ namespace OnlineQuiz.Services
                 throw new InvalidOperationException("Attempt has already been submitted");
             }
 
+            // Check time limit
+            var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+            if (quiz != null && quiz.TimeLimitMinutes.HasValue && quiz.TimeLimitMinutes.Value > 0)
+            {
+                var deadline = attempt.StartedAt.AddMinutes(quiz.TimeLimitMinutes.Value);
+                // Add 2 minutes buffer for latency/clock skew
+                if (DateTime.UtcNow > deadline.AddMinutes(2))
+                {
+                    throw new InvalidOperationException($"Time limit exceeded. The quiz should have been submitted by {deadline}");
+                }
+            }
+
             attempt.SubmittedAt = DateTime.UtcNow;
             attempt.Score = submitAttemptDto.Score;
             attempt.TimeSpentSeconds = submitAttemptDto.TimeSpentSeconds;
 
             var updatedAttempt = await _attemptRepository.UpdateAsync(attempt);
-            var quiz = await _quizRepository.GetByIdAsync(updatedAttempt.QuizId);
+
             var student = await _userRepository.GetByIdAsync(updatedAttempt.UserId);
 
             return new AttemptResponseDto
@@ -233,6 +263,42 @@ namespace OnlineQuiz.Services
                 Score = updatedAttempt.Score,
                 TimeSpentSeconds = updatedAttempt.TimeSpentSeconds
             };
+        }
+
+        public async Task<bool> DeleteAttemptAsync(int attemptId, int userId)
+        {
+            var attempt = await _attemptRepository.GetByIdAsync(attemptId);
+            if (attempt == null)
+            {
+                throw new ArgumentException($"Attempt with ID {attemptId} not found");
+            }
+
+            // Check permissions
+            bool isOwner = attempt.UserId == userId;
+            bool isInstructor = false;
+
+            var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+            if (quiz != null)
+            {
+                var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+                if (course != null && course.InstructorUserId == userId)
+                {
+                    isInstructor = true;
+                }
+            }
+
+            if (!isOwner && !isInstructor)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to delete this attempt");
+            }
+
+            // If student (owner) and not instructor, can only delete if NOT submitted
+            if (isOwner && !isInstructor && attempt.SubmittedAt != null)
+            {
+                throw new InvalidOperationException("Cannot delete submitted attempts");
+            }
+
+            return await _attemptRepository.DeleteAsync(attemptId);
         }
     }
 }

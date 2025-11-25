@@ -22,10 +22,35 @@ namespace OnlineQuiz.DTOs
 
     public class UpdateQuizDto
     {
+        [StringLength(255, MinimumLength = 3)]
         public string? Title { get; set; }
+
         public DateTime? DueAt { get; set; }
+
+        [Range(1, 1440, ErrorMessage = "Time limit must be between 1 minute and 24 hours")]
         public int? TimeLimitMinutes { get; set; }
+
         public bool? IsPublished { get; set; }
+        public List<UpdateQuestionDto>? Questions { get; set; }
+    }
+
+    public class UpdateQuestionDto
+    {
+        public int? QuestionId { get; set; } // Null for new questions
+        public string? Type { get; set; }
+        public string? Body { get; set; }
+        public decimal? Points { get; set; }
+        public int? SortOrder { get; set; }
+        public List<UpdateChoiceDto>? Choices { get; set; }
+        public bool? Delete { get; set; } // Flag to mark for deletion
+    }
+
+    public class UpdateChoiceDto
+    {
+        public int? ChoiceId { get; set; } // Null for new choices
+        public string? Body { get; set; }
+        public bool? IsCorrect { get; set; }
+        public bool? Delete { get; set; } // Flag to mark for deletion
     }
 
     public class QuizResponseDto

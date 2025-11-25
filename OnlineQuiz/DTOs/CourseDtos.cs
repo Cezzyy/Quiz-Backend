@@ -23,10 +23,19 @@ namespace OnlineQuiz.DTOs
 
     public class UpdateCourseDto
     {
+        [StringLength(255, MinimumLength = 3)]
         public string? Name { get; set; }
+
+        [StringLength(50)]
+        [RegularExpression("^(Active|Inactive|Archived)$", ErrorMessage = "Status must be Active, Inactive, or Archived")]
         public string? Status { get; set; }
+
+        [StringLength(100)]
         public string? Category { get; set; }
+
+        [StringLength(100)]
         public string? Section { get; set; }
+
         public int? InstructorId { get; set; }
     }
 

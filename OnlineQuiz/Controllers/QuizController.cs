@@ -78,7 +78,7 @@ namespace OnlineQuiz.Controllers
                 var quizzes = await _quizService.GetQuizzesForCourseAsync(courseId, userId, isStudent);
                 if (!quizzes.Any())
                 {
-                    return NotFound(new { error = "No quizzes found for this course" });
+                    return Ok(new List<QuizResponseDto>());
                 }
                 return Ok(quizzes);
             }
@@ -185,7 +185,7 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
-        /// Delete a quiz (Admin or Course Instructor only)
+        /// Delete a quiz (Course Instructor or Admin only)
         /// </summary>
         [HttpDelete("{quizId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

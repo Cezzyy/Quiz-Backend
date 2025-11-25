@@ -9,5 +9,6 @@ namespace OnlineQuiz.IServices
         Task<List<AttemptResponseDto>> GetAttemptsForQuizAsync(int quizId, int teacherId);
         Task<List<AttemptResponseDto>> GetAttemptsForStudentAsync(int studentId);
         Task<AttemptResponseDto> SubmitAttemptAsync(int attemptId, SubmitAttemptDto submitAttemptDto, int studentId);
+        Task<bool> DeleteAttemptAsync(int attemptId, int userId);
     }
 }

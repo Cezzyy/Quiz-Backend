@@ -61,6 +61,22 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get course by ID
+        /// </summary>
+        [HttpGet("{courseId}")]
+        [ProducesResponseType(typeof(CourseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<CourseResponseDto>> GetCourseById(int courseId)
+        {
+            var course = await _courseService.GetCourseByIdAsync(courseId);
+            if (course == null)
+            {
+                return NotFound(new { error = "Course not found" });
+            }
+            return Ok(course);
+        }
+
+        /// <summary>
         /// Get all courses
         /// </summary>
         [HttpGet]
@@ -70,7 +86,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetAllCoursesAsync();
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -85,7 +101,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetCoursesForTeacherAsync(teacherId);
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found for this teacher" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -100,7 +116,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetCoursesForStudentAsync(studentId);
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found for this student" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -142,7 +158,7 @@ namespace OnlineQuiz.Controllers
                 var enrollments = await _courseService.GetCourseEnrollmentsAsync(courseId, teacherId);
                 if (!enrollments.Any())
                 {
-                    return NotFound(new { error = "No enrollments found for this course" });
+                    return Ok(new List<EnrollmentResponseDto>());
                 }
                 return Ok(enrollments);
             }
@@ -210,6 +226,7 @@ namespace OnlineQuiz.Controllers
         /// Delete a course (Admin only)
         /// </summary>
         [HttpDelete("{courseId}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> DeleteCourse(int courseId)
