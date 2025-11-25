@@ -63,7 +63,7 @@ namespace OnlineQuiz.Repository
                 .Where(e => e.UserId == studentId)
                 .Get();
 
-            return response.Models.Select(e => e.Course).Where(c => c != null).ToList();
+            return response.Models.Select(e => e.Course).Where(c => c != null).Cast<Course>().ToList();
         }
     }
 }
