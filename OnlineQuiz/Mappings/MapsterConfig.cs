@@ -20,8 +20,18 @@ namespace OnlineQuiz.Mappings
             //     .NewConfig()
             //     .Map(dest => dest.UserId, src => src.UserId);
             
-            // For now, we rely on Mapster's convention-based mapping
-            // which automatically maps properties with the same names
+            // Course mappings
+            TypeAdapterConfig<Course, CourseResponseDto>
+                .NewConfig()
+                .Map(dest => dest.InstructorId, src => src.InstructorUserId);
+
+            TypeAdapterConfig<CreateCourseDto, Course>
+                .NewConfig()
+                .Map(dest => dest.InstructorUserId, src => src.InstructorId);
+                
+            TypeAdapterConfig<UpdateCourseDto, Course>
+                .NewConfig()
+                .Map(dest => dest.InstructorUserId, src => src.InstructorId);
         }
     }
 }

@@ -83,11 +83,20 @@ namespace OnlineQuiz.Services
             var courses = await _courseRepository.GetByStudentIdAsync(studentId);
             var response = courses.Adapt<List<CourseResponseDto>>();
             
+            // Collect instructor IDs
+            var instructorIds = response.Select(c => c.InstructorId).Distinct().ToList();
+            
+            // Batch fetch instructors
+            var instructors = await _userRepository.GetByIdsAsync(instructorIds);
+            var instructorMap = instructors.ToDictionary(u => u.UserId, u => u.FullName);
+
             // Populate instructor names
             foreach (var dto in response)
             {
-                var instructorUser = await _userRepository.GetByIdAsync(dto.InstructorId);
-                dto.InstructorName = instructorUser?.FullName;
+                if (instructorMap.TryGetValue(dto.InstructorId, out var name))
+                {
+                    dto.InstructorName = name;
+                }
             }
             
             return response;
@@ -171,14 +180,26 @@ namespace OnlineQuiz.Services
             var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
             var response = new List<EnrollmentResponseDto>();
 
+            // Collect user IDs
+            var userIds = enrollments.Select(e => e.UserId).Distinct().ToList();
+            
+            // Batch fetch students
+            var students = await _userRepository.GetByIdsAsync(userIds);
+            var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+
             foreach (var enrollment in enrollments)
             {
-                var studentUser = await _userRepository.GetByIdAsync(enrollment.UserId);
+                string? studentName = null;
+                if (studentMap.TryGetValue(enrollment.UserId, out var name))
+                {
+                    studentName = name;
+                }
+
                 response.Add(new EnrollmentResponseDto
                 {
                     EnrollmentId = enrollment.EnrollmentId,
                     UserId = enrollment.UserId,
-                    StudentName = studentUser?.FullName,
+                    StudentName = studentName,
                     CourseId = enrollment.CourseId,
                     CourseName = course.Name,
                     EnrolledAt = enrollment.EnrolledAt,
@@ -276,11 +297,20 @@ namespace OnlineQuiz.Services
             var courses = await _courseRepository.GetAllAsync();
             var response = courses.Adapt<List<CourseResponseDto>>();
             
+            // Collect instructor IDs
+            var instructorIds = response.Select(c => c.InstructorId).Distinct().ToList();
+            
+            // Batch fetch instructors
+            var instructors = await _userRepository.GetByIdsAsync(instructorIds);
+            var instructorMap = instructors.ToDictionary(u => u.UserId, u => u.FullName);
+
             // Populate instructor names
             foreach (var dto in response)
             {
-                var instructorUser = await _userRepository.GetByIdAsync(dto.InstructorId);
-                dto.InstructorName = instructorUser?.FullName;
+                if (instructorMap.TryGetValue(dto.InstructorId, out var name))
+                {
+                    dto.InstructorName = name;
+                }
             }
             
             return response;

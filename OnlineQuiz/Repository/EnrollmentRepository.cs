@@ -16,7 +16,7 @@ namespace OnlineQuiz.Repository
         public async Task<Enrollment> CreateAsync(Enrollment enrollment)
         {
             var response = await _supabaseService.GetClient().From<Enrollment>().Insert(enrollment);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to create enrollment");
         }
 
         public async Task<bool> ExistsAsync(int studentId, int courseId)

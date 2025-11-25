@@ -15,5 +15,7 @@ namespace OnlineQuiz.IRepository
         Task<Choice> CreateChoiceAsync(Choice choice);
         Task<List<Question>> GetQuestionsByQuizIdAsync(int quizId);
         Task<List<Choice>> GetChoicesByQuestionIdAsync(int questionId);
+        Task<List<Choice>> GetChoicesByQuestionIdsAsync(List<int> questionIds);
+        Task<List<Quiz>> GetByIdsAsync(List<int> quizIds);
     }
 }

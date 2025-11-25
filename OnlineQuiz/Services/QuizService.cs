@@ -3,6 +3,7 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Models;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Services
 {
@@ -103,7 +104,7 @@ namespace OnlineQuiz.Services
                 if (course != null && course.InstructorUserId != userId)
                 {
                     // Allow admin? For now strict teacher check
-                    // throw new UnauthorizedAccessException("Teacher is not assigned to this course");
+                    throw new UnauthorizedAccessException("Teacher is not assigned to this course");
                 }
             }
 
@@ -135,11 +136,24 @@ namespace OnlineQuiz.Services
             var questions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
             response.Questions = new List<QuestionResponseDto>();
 
+            // Collect all question IDs
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+            
+            // Batch fetch choices
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
             foreach (var q in questions)
             {
                 var qDto = q.Adapt<QuestionResponseDto>();
-                var choices = await _quizRepository.GetChoicesByQuestionIdAsync(q.QuestionId);
-                qDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                if (choicesMap.TryGetValue(q.QuestionId, out var choices))
+                {
+                    qDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                }
+                else
+                {
+                    qDto.Choices = new List<ChoiceResponseDto>();
+                }
                 response.Questions.Add(qDto);
             }
 
@@ -165,7 +179,7 @@ namespace OnlineQuiz.Services
             {
                 // Check if user is Admin
                 var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
-                var isAdmin = userRoles.Any(ur => ur.RoleId == 1); // Assuming 1 is Admin Role ID
+                var isAdmin = userRoles.Any(ur => ur.RoleId == RoleConstants.Admin); // Assuming 1 is Admin Role ID
 
                 if (!isAdmin)
                 {

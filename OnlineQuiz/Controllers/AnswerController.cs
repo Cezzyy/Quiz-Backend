@@ -49,6 +49,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var answers = await _answerService.GetAnswersForAttemptAsync(attemptId, userId);
+                if (!answers.Any())
+                {
+                    return NotFound(new { error = "No answers found for this attempt" });
+                }
                 return Ok(answers);
             }
             catch (Exception ex)

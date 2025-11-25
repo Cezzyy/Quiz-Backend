@@ -42,6 +42,10 @@ namespace OnlineQuiz.Controllers
         public async Task<ActionResult<List<CourseResponseDto>>> GetAllCourses()
         {
             var courses = await _courseService.GetAllCoursesAsync();
+            if (!courses.Any())
+            {
+                return NotFound(new { error = "No courses found" });
+            }
             return Ok(courses);
         }
 
@@ -53,6 +57,10 @@ namespace OnlineQuiz.Controllers
         public async Task<ActionResult<List<CourseResponseDto>>> GetCoursesForTeacher(int teacherId)
         {
             var courses = await _courseService.GetCoursesForTeacherAsync(teacherId);
+            if (!courses.Any())
+            {
+                return NotFound(new { error = "No courses found for this teacher" });
+            }
             return Ok(courses);
         }
 
@@ -64,6 +72,10 @@ namespace OnlineQuiz.Controllers
         public async Task<ActionResult<List<CourseResponseDto>>> GetCoursesForStudent(int studentId)
         {
             var courses = await _courseService.GetCoursesForStudentAsync(studentId);
+            if (!courses.Any())
+            {
+                return NotFound(new { error = "No courses found for this student" });
+            }
             return Ok(courses);
         }
 
@@ -102,6 +114,10 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var enrollments = await _courseService.GetCourseEnrollmentsAsync(courseId, teacherId);
+                if (!enrollments.Any())
+                {
+                    return NotFound(new { error = "No enrollments found for this course" });
+                }
                 return Ok(enrollments);
             }
             catch (UnauthorizedAccessException ex)

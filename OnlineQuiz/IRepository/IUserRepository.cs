@@ -8,6 +8,7 @@ namespace OnlineQuiz.IRepository
         Task<User?> GetByIdAsync(int userId);
         Task<User?> GetByEmailAsync(string email);
         Task<List<User>> GetAllAsync();
+        Task<List<User>> GetByIdsAsync(List<int> userIds);
         Task<User> UpdateAsync(User user);
         Task<bool> DeleteAsync(int userId);
     }
