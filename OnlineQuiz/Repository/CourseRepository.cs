@@ -51,7 +51,7 @@ namespace OnlineQuiz.Repository
         public async Task<List<Course>> GetByInstructorIdAsync(int instructorId)
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.InstructorId == instructorId)
+                .Where(c => c.InstructorUserId == instructorId)
                 .Get();
             return response.Models;
         }

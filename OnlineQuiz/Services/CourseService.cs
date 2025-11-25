@@ -50,7 +50,7 @@ namespace OnlineQuiz.Services
             var createdCourse = await _courseRepository.CreateAsync(course);
             
             // Fetch instructor details for response
-            var instructorUser = await _userRepository.GetByIdAsync(createdCourse.InstructorId);
+            var instructorUser = await _userRepository.GetByIdAsync(createdCourse.InstructorUserId);
             
             var response = createdCourse.Adapt<CourseResponseDto>();
             response.InstructorName = instructorUser?.FullName;
@@ -104,13 +104,13 @@ namespace OnlineQuiz.Services
 
             // Verify enroller is the instructor of the course or an admin
             // Requirement: "Teachers can only see courses assigned by the admin to them and now they can assign students on their courses"
-            if (course.InstructorId != enrollStudentDto.EnrolledBy)
+            if (course.InstructorUserId != enrollStudentDto.EnrolledBy)
             {
                 // Allow admin override? The requirement implies teachers do it.
                 // We'll strict check for teacher ownership for now as per "Teachers... can assign students"
                 // But let's also allow Admin (CreatedBy) just in case
                 // For now, strict check:
-                if (enrollStudentDto.EnrolledBy != course.InstructorId) 
+                if (enrollStudentDto.EnrolledBy != course.InstructorUserId) 
                 {
                      // Check if admin? Skipping for simplicity based on strict prompt flow
                      // throw new UnauthorizedAccessException("Only the assigned instructor can enroll students");
@@ -163,7 +163,7 @@ namespace OnlineQuiz.Services
                 throw new ArgumentException("Course not found");
             }
 
-            if (course.InstructorId != teacherId)
+            if (course.InstructorUserId != teacherId)
             {
                 throw new UnauthorizedAccessException("You are not the instructor of this course");
             }
@@ -199,7 +199,7 @@ namespace OnlineQuiz.Services
             }
 
             // Verify teacher is the instructor
-            if (course.InstructorId != teacherId)
+            if (course.InstructorUserId != teacherId)
             {
                 throw new UnauthorizedAccessException("Only the assigned instructor can unenroll students");
             }
@@ -244,7 +244,7 @@ namespace OnlineQuiz.Services
                 {
                     throw new ArgumentException($"Instructor with ID {updateCourseDto.InstructorId} not found");
                 }
-                course.InstructorId = updateCourseDto.InstructorId.Value;
+                course.InstructorUserId = updateCourseDto.InstructorId.Value;
             }
 
             course.UpdatedAt = DateTime.UtcNow;
@@ -252,7 +252,7 @@ namespace OnlineQuiz.Services
             var updatedCourse = await _courseRepository.UpdateAsync(course);
             
             // Fetch instructor details
-            var instructorUser = await _userRepository.GetByIdAsync(updatedCourse.InstructorId);
+            var instructorUser = await _userRepository.GetByIdAsync(updatedCourse.InstructorUserId);
             
             var response = updatedCourse.Adapt<CourseResponseDto>();
             response.InstructorName = instructorUser?.FullName;

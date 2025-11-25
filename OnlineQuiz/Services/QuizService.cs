@@ -38,7 +38,7 @@ namespace OnlineQuiz.Services
             }
 
             // Verify creator is the instructor
-            if (course.InstructorId != createQuizDto.CreatedBy)
+            if (course.InstructorUserId != createQuizDto.CreatedBy)
             {
                 throw new UnauthorizedAccessException("Only the assigned instructor can create quizzes for this course");
             }
@@ -100,7 +100,7 @@ namespace OnlineQuiz.Services
             else
             {
                 var course = await _courseRepository.GetByIdAsync(courseId);
-                if (course != null && course.InstructorId != userId)
+                if (course != null && course.InstructorUserId != userId)
                 {
                     // Allow admin? For now strict teacher check
                     // throw new UnauthorizedAccessException("Teacher is not assigned to this course");
@@ -161,7 +161,7 @@ namespace OnlineQuiz.Services
             }
 
             // Check if user is the instructor
-            if (course.InstructorId != userId)
+            if (course.InstructorUserId != userId)
             {
                 // Check if user is Admin
                 var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);

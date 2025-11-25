@@ -43,6 +43,9 @@ namespace OnlineQuiz.DTOs
     public class CreateQuestionDto
     {
         [Required]
+        public int QuizId { get; set; }
+
+        [Required]
         public string Type { get; set; } = "Single"; // Single, Multiple, Text
 
         [Required]
@@ -68,6 +71,8 @@ namespace OnlineQuiz.DTOs
 
     public class CreateChoiceDto
     {
+        public int QuestionId { get; set; }
+
         [Required]
         public string Body { get; set; } = string.Empty;
 
