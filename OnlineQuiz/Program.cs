@@ -1,8 +1,11 @@
 using DotNetEnv;
 using Mapster;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using OnlineQuiz.Mappings;
 using OnlineQuiz.Services;
 using Scalar.AspNetCore;
+using System.Text;
 
 // Load environment variables from .env file
 Env.Load();
@@ -29,9 +32,55 @@ var supabaseService = new SupabaseService(supabaseUrl, supabaseKey);
 await supabaseService.InitializeAsync();
 builder.Services.AddSingleton(supabaseService);
 
+// Configure JWT Authentication
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? throw new InvalidOperationException("JWT_SECRET is not set in environment variables");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "OnlineQuizAPI";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "OnlineQuizClient";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero // Remove default 5-minute tolerance
+    };
+
+    // Configure to read JWT from cookie as well as Authorization header
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Check if token is in cookie
+            if (context.Request.Cookies.ContainsKey("jwt"))
+            {
+                context.Token = context.Request.Cookies["jwt"];
+                Console.WriteLine("JWT token retrieved from cookie");
+            }
+            // Otherwise it will be read from Authorization header by default
+            else if (!string.IsNullOrEmpty(context.Request.Headers["Authorization"]))
+            {
+                Console.WriteLine("JWT token retrieved from Authorization header");
+            }
+
+            return Task.CompletedTask;
+        }
+    };
+});
+
 // Configure Mapster mappings
 MapsterConfig.RegisterMappings();
-
 
 // Configure Mapster
 builder.Services.AddMapster();
@@ -44,6 +93,7 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.IUserRoleRepository, OnlineQui
 builder.Services.AddScoped<OnlineQuiz.IRepository.ICourseRepository, OnlineQuiz.Repository.CourseRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IQuizRepository, OnlineQuiz.Repository.QuizRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IEnrollmentRepository, OnlineQuiz.Repository.EnrollmentRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IAuthRepository, OnlineQuiz.Repository.AuthRepository>();
 
 // Register Service Layer
 builder.Services.AddScoped<OnlineQuiz.IServices.IUserService, OnlineQuiz.Services.UserService>();
@@ -53,6 +103,7 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.IAttemptRepository, OnlineQuiz
 builder.Services.AddScoped<OnlineQuiz.IRepository.IAttemptAnswerRepository, OnlineQuiz.Repository.AttemptAnswerRepository>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IAttemptService, OnlineQuiz.Services.AttemptService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IAnswerService, OnlineQuiz.Services.AnswerService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IAuthService, OnlineQuiz.Services.AuthService>();
 
 
 // Configure CORS for Web (Vue) and Mobile (Flutter)
@@ -149,10 +200,8 @@ app.Use(async (context, next) =>
     await next();
 });
 
-
-
-
-
+// IMPORTANT: Authentication must come before Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Redirect root path to Scalar API documentation
