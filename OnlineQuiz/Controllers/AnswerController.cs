@@ -42,6 +42,34 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Record multiple answers for an attempt (Student only)
+        /// </summary>
+        [HttpPost("bulk")]
+        [ProducesResponseType(typeof(List<AnswerResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<List<AnswerResponseDto>>> RecordBulkAnswers([FromBody] BulkAnswerRequestDto bulkAnswerDto, [FromQuery] int studentId)
+        {
+            try
+            {
+                var answers = await _answerService.RecordBulkAnswersAsync(bulkAnswerDto, studentId);
+                return Ok(answers);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get all answers for an attempt
         /// </summary>
         [HttpGet("attempt/{attemptId}")]
@@ -53,9 +81,67 @@ namespace OnlineQuiz.Controllers
                 var answers = await _answerService.GetAnswersForAttemptAsync(attemptId, userId);
                 if (!answers.Any())
                 {
-                    return NotFound(new { error = "No answers found for this attempt" });
+                    return Ok(new List<AnswerResponseDto>());
                 }
                 return Ok(answers);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update an existing answer (Student only)
+        /// </summary>
+        [HttpPut("{answerId}")]
+        [ProducesResponseType(typeof(AnswerResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AnswerResponseDto>> UpdateAnswer(int answerId, [FromBody] CreateAnswerDto createAnswerDto, [FromQuery] int studentId)
+        {
+            try
+            {
+                var answer = await _answerService.UpdateAnswerAsync(answerId, createAnswerDto, studentId);
+                return Ok(answer);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete an answer (Student only)
+        /// </summary>
+        [HttpDelete("{answerId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> DeleteAnswer(int answerId, [FromQuery] int studentId)
+        {
+            try
+            {
+                await _answerService.DeleteAnswerAsync(answerId, studentId);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
             }
             catch (Exception ex)
             {

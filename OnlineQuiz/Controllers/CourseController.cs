@@ -86,7 +86,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetAllCoursesAsync();
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -101,7 +101,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetCoursesForTeacherAsync(teacherId);
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found for this teacher" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -116,7 +116,7 @@ namespace OnlineQuiz.Controllers
             var courses = await _courseService.GetCoursesForStudentAsync(studentId);
             if (!courses.Any())
             {
-                return NotFound(new { error = "No courses found for this student" });
+                return Ok(new List<CourseResponseDto>());
             }
             return Ok(courses);
         }
@@ -158,7 +158,7 @@ namespace OnlineQuiz.Controllers
                 var enrollments = await _courseService.GetCourseEnrollmentsAsync(courseId, teacherId);
                 if (!enrollments.Any())
                 {
-                    return NotFound(new { error = "No enrollments found for this course" });
+                    return Ok(new List<EnrollmentResponseDto>());
                 }
                 return Ok(enrollments);
             }

@@ -6,5 +6,8 @@ namespace OnlineQuiz.IServices
     {
         Task<AnswerResponseDto> RecordAnswerAsync(CreateAnswerDto createAnswerDto, int studentId);
         Task<List<AnswerResponseDto>> GetAnswersForAttemptAsync(int attemptId, int userId);
+        Task<AnswerResponseDto> UpdateAnswerAsync(int answerId, CreateAnswerDto updateAnswerDto, int studentId);
+        Task<bool> DeleteAnswerAsync(int answerId, int studentId);
+        Task<List<AnswerResponseDto>> RecordBulkAnswersAsync(BulkAnswerRequestDto bulkAnswerDto, int studentId);
     }
 }

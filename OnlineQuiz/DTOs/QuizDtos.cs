@@ -22,9 +22,14 @@ namespace OnlineQuiz.DTOs
 
     public class UpdateQuizDto
     {
+        [StringLength(255, MinimumLength = 3)]
         public string? Title { get; set; }
+
         public DateTime? DueAt { get; set; }
+
+        [Range(1, 1440, ErrorMessage = "Time limit must be between 1 minute and 24 hours")]
         public int? TimeLimitMinutes { get; set; }
+
         public bool? IsPublished { get; set; }
         public List<UpdateQuestionDto>? Questions { get; set; }
     }

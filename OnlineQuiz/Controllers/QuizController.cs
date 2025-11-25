@@ -78,7 +78,7 @@ namespace OnlineQuiz.Controllers
                 var quizzes = await _quizService.GetQuizzesForCourseAsync(courseId, userId, isStudent);
                 if (!quizzes.Any())
                 {
-                    return NotFound(new { error = "No quizzes found for this course" });
+                    return Ok(new List<QuizResponseDto>());
                 }
                 return Ok(quizzes);
             }

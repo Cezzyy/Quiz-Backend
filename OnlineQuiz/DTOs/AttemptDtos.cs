@@ -52,4 +52,21 @@ namespace OnlineQuiz.DTOs
         public DateTime AnsweredAt { get; set; }
         public bool? IsCorrect { get; set; } // Only for submitted attempts
     }
+    public class BulkAnswerRequestDto
+    {
+        [Required]
+        public int AttemptId { get; set; }
+
+        [Required]
+        public List<AnswerSubmissionDto> Answers { get; set; } = new();
+    }
+
+    public class AnswerSubmissionDto
+    {
+        [Required]
+        public int QuestionId { get; set; }
+
+        public int? ChoiceId { get; set; }
+        public string? TextAnswer { get; set; }
+    }
 }
