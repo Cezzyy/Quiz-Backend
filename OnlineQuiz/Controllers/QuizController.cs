@@ -105,5 +105,61 @@ namespace OnlineQuiz.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Update a quiz (Teacher only)
+        /// </summary>
+        [HttpPut("{quizId}")]
+        [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<QuizResponseDto>> UpdateQuiz(int quizId, [FromBody] UpdateQuizDto updateQuizDto, [FromQuery] int teacherId)
+        {
+            try
+            {
+                var quiz = await _quizService.UpdateQuizAsync(quizId, updateQuizDto, teacherId);
+                return Ok(quiz);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Publish or unpublish a quiz (Teacher only)
+        /// </summary>
+        [HttpPut("{quizId}/publish")]
+        [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<QuizResponseDto>> PublishQuiz(int quizId, [FromQuery] bool isPublished, [FromQuery] int teacherId)
+        {
+            try
+            {
+                var quiz = await _quizService.PublishQuizAsync(quizId, isPublished, teacherId);
+                return Ok(quiz);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

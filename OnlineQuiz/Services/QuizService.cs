@@ -175,5 +175,64 @@ namespace OnlineQuiz.Services
 
             return await _quizRepository.DeleteAsync(quizId);
         }
+
+        public async Task<QuizResponseDto> UpdateQuizAsync(int quizId, UpdateQuizDto updateQuizDto, int teacherId)
+        {
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                throw new ArgumentException($"Quiz with ID {quizId} not found");
+            }
+
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException("Quiz belongs to a non-existent course");
+            }
+
+            // Check if user is the instructor
+            if (course.InstructorId != teacherId)
+            {
+                throw new UnauthorizedAccessException("Only the assigned instructor can update quizzes");
+            }
+
+            // Update fields if provided
+            if (!string.IsNullOrEmpty(updateQuizDto.Title)) quiz.Title = updateQuizDto.Title;
+            if (updateQuizDto.DueAt.HasValue) quiz.DueAt = updateQuizDto.DueAt;
+            if (updateQuizDto.TimeLimitMinutes.HasValue) quiz.TimeLimitMinutes = updateQuizDto.TimeLimitMinutes;
+            if (updateQuizDto.IsPublished.HasValue) quiz.IsPublished = updateQuizDto.IsPublished.Value;
+
+            quiz.UpdatedAt = DateTime.UtcNow;
+
+            var updatedQuiz = await _quizRepository.UpdateAsync(quiz);
+            return updatedQuiz.Adapt<QuizResponseDto>();
+        }
+
+        public async Task<QuizResponseDto> PublishQuizAsync(int quizId, bool isPublished, int teacherId)
+        {
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                throw new ArgumentException($"Quiz with ID {quizId} not found");
+            }
+
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException("Quiz belongs to a non-existent course");
+            }
+
+            // Check if user is the instructor
+            if (course.InstructorId != teacherId)
+            {
+                throw new UnauthorizedAccessException("Only the assigned instructor can publish/unpublish quizzes");
+            }
+
+            quiz.IsPublished = isPublished;
+            quiz.UpdatedAt = DateTime.UtcNow;
+
+            var updatedQuiz = await _quizRepository.UpdateAsync(quiz);
+            return updatedQuiz.Adapt<QuizResponseDto>();
+        }
     }
 }
