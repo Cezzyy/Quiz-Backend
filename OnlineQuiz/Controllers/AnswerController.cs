@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
@@ -6,6 +7,7 @@ namespace OnlineQuiz.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AnswerController : ControllerBase
     {
         private readonly IAnswerService _answerService;

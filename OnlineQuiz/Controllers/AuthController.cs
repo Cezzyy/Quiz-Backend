@@ -23,6 +23,7 @@ namespace OnlineQuiz.Controllers
         /// <param name="loginRequest">Login credentials</param>
         /// <returns>User details and JWT token</returns>
         [HttpPost("login")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
