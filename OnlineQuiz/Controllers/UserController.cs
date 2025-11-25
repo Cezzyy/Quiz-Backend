@@ -264,6 +264,79 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { error = "An error occurred while bulk deleting users", details = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Bulk import users from Excel file (Admin only)
+        /// </summary>
+        /// <param name="file">Excel file containing user data</param>
+        /// <returns>Import results with success/failure details</returns>
+        [HttpPost("bulk-import")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(BulkUserImportResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BulkUserImportResultDto>> BulkImportUsers(IFormFile file)
+        {
+            try
+            {
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { error = "No file uploaded" });
+                }
+
+                // Validate file extension
+                var allowedExtensions = new[] { ".xlsx", ".xls" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLower();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return BadRequest(new { error = "Invalid file format. Only .xlsx and .xls files are allowed" });
+                }
+
+                // Get current user ID
+                var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+
+                // Process the file
+                using var stream = file.OpenReadStream();
+                var result = await _userService.BulkCreateUsersFromExcelAsync(stream, file.FileName, currentUserId);
+
+                // Log the BULK_IMPORT activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.IMPORT,
+                        Entity = ActivityLogConstants.Entities.User,
+                        EntityId = result.LogId,
+                        Description = $"Bulk imported users from {file.FileName}: {result.SuccessCount} succeeded, {result.FailureCount} failed",
+                        NewValues = new { 
+                            FileName = file.FileName, 
+                            TotalRows = result.TotalRows,
+                            SuccessCount = result.SuccessCount, 
+                            FailureCount = result.FailureCount,
+                            LogId = result.LogId
+                        },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_IMPORT activity: {logEx.Message}");
+                }
+
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while importing users", details = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Reset user password (Admin only)
         /// </summary>

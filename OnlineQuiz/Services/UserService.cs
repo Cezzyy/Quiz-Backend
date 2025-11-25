@@ -12,17 +12,20 @@ namespace OnlineQuiz.Services
         private readonly IStudentRepository _studentRepository;
         private readonly ITeacherRepository _teacherRepository;
         private readonly IUserRoleRepository _userRoleRepository;
+        private readonly IExportImportLogService _exportImportLogService;
 
         public UserService(
             IUserRepository userRepository,
             IStudentRepository studentRepository,
             ITeacherRepository teacherRepository,
-            IUserRoleRepository userRoleRepository)
+            IUserRoleRepository userRoleRepository,
+            IExportImportLogService exportImportLogService)
         {
             _userRepository = userRepository;
             _studentRepository = studentRepository;
             _teacherRepository = teacherRepository;
             _userRoleRepository = userRoleRepository;
+            _exportImportLogService = exportImportLogService;
         }
 
         public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
@@ -357,6 +360,220 @@ namespace OnlineQuiz.Services
 
             user.PasswordHash = PasswordHasher.HashPassword(newPassword);
             await _userRepository.UpdateAsync(user);
+        }
+
+        public async Task<BulkUserImportResultDto> BulkCreateUsersFromExcelAsync(Stream fileStream, string fileName, int createdByUserId)
+        {
+            var result = new BulkUserImportResultDto();
+            var errors = new List<UserImportErrorDto>();
+            var createdUsers = new List<UserResponseDto>();
+
+            // Create initial log entry
+            var log = await _exportImportLogService.CreateLogAsync(new CreateExportImportLogDto
+            {
+                UserId = createdByUserId,
+                Type = ExportImportConstants.Types.BulkImport,
+                FileName = fileName
+            });
+
+            result.LogId = log.LogId;
+
+            try
+            {
+                // Update log status to InProgress
+                await _exportImportLogService.UpdateLogStatusAsync(log.LogId, new UpdateExportImportLogDto
+                {
+                    Status = ExportImportConstants.Statuses.InProgress
+                }, createdByUserId);
+
+                // Parse Excel file using ClosedXML
+                using var workbook = new ClosedXML.Excel.XLWorkbook(fileStream);
+                var worksheet = workbook.Worksheet(1); // First worksheet
+
+                // Validate headers
+                var headerRow = worksheet.Row(1);
+                var expectedHeaders = new[] { "FullName", "Email", "Password", "Role", "StudentId", "YearLevel", "Section", "Course", "Department", "ContactNumber", "EmergencyContactNumber" };
+                
+                for (int i = 0; i < expectedHeaders.Length; i++)
+                {
+                    var cellValue = headerRow.Cell(i + 1).GetString().Trim();
+                    if (!cellValue.Equals(expectedHeaders[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException($"Invalid column header at position {i + 1}. Expected '{expectedHeaders[i]}', got '{cellValue}'");
+                    }
+                }
+
+                // Process data rows
+                var rows = worksheet.RowsUsed().Skip(1); // Skip header row
+                int rowNumber = 1; // Start from 1 (header is 0)
+
+                foreach (var row in rows)
+                {
+                    rowNumber++;
+                    result.TotalRows++;
+
+                    try
+                    {
+                        // Parse row data
+                        var rowData = new UserImportRowDto
+                        {
+                            RowNumber = rowNumber,
+                            FullName = row.Cell(1).GetString().Trim(),
+                            Email = row.Cell(2).GetString().Trim(),
+                            Password = row.Cell(3).GetString().Trim(),
+                            Role = row.Cell(4).GetString().Trim(),
+                            StudentId = row.Cell(5).GetString().Trim(),
+                            YearLevel = row.Cell(6).TryGetValue(out int yearLevel) ? yearLevel : null,
+                            Section = row.Cell(7).GetString().Trim(),
+                            Course = row.Cell(8).GetString().Trim(),
+                            Department = row.Cell(9).GetString().Trim(),
+                            ContactNumber = row.Cell(10).GetString().Trim(),
+                            EmergencyContactNumber = row.Cell(11).GetString().Trim()
+                        };
+
+                        // Validate required fields
+                        var validationErrors = new List<string>();
+
+                        if (string.IsNullOrWhiteSpace(rowData.FullName))
+                            validationErrors.Add("FullName is required");
+
+                        if (string.IsNullOrWhiteSpace(rowData.Email))
+                            validationErrors.Add("Email is required");
+                        else if (!IsValidEmail(rowData.Email))
+                            validationErrors.Add("Invalid email format");
+
+                        if (string.IsNullOrWhiteSpace(rowData.Password))
+                            validationErrors.Add("Password is required");
+                        else if (rowData.Password.Length < 6)
+                            validationErrors.Add("Password must be at least 6 characters");
+
+                        if (string.IsNullOrWhiteSpace(rowData.Role))
+                            validationErrors.Add("Role is required");
+
+                        // Convert role name to RoleId
+                        int roleId;
+                        if (!string.IsNullOrWhiteSpace(rowData.Role))
+                        {
+                            roleId = rowData.Role.ToLower() switch
+                            {
+                                "admin" => RoleConstants.Admin,
+                                "teacher" => RoleConstants.Teacher,
+                                "student" => RoleConstants.Student,
+                                _ => 0
+                            };
+
+                            if (roleId == 0)
+                                validationErrors.Add("Role must be 'Admin', 'Teacher', or 'Student'");
+
+                            // Validate student-specific fields
+                            if (roleId == RoleConstants.Student && string.IsNullOrWhiteSpace(rowData.StudentId))
+                                validationErrors.Add("StudentId is required for Student role");
+                        }
+                        else
+                        {
+                            roleId = 0;
+                        }
+
+                        if (validationErrors.Any())
+                        {
+                            errors.Add(new UserImportErrorDto
+                            {
+                                RowNumber = rowNumber,
+                                ErrorMessage = string.Join("; ", validationErrors),
+                                FullName = rowData.FullName,
+                                Email = rowData.Email,
+                                Role = rowData.Role
+                            });
+                            result.FailureCount++;
+                            continue;
+                        }
+
+                        // Create user DTO
+                        var createUserDto = new CreateUserDto
+                        {
+                            FullName = rowData.FullName,
+                            Email = rowData.Email,
+                            Password = rowData.Password,
+                            RoleId = roleId,
+                            StudentId = string.IsNullOrWhiteSpace(rowData.StudentId) ? null : rowData.StudentId,
+                            YearLevel = rowData.YearLevel,
+                            Section = string.IsNullOrWhiteSpace(rowData.Section) ? null : rowData.Section,
+                            Course = string.IsNullOrWhiteSpace(rowData.Course) ? null : rowData.Course,
+                            Department = string.IsNullOrWhiteSpace(rowData.Department) ? null : rowData.Department,
+                            ContactNumber = string.IsNullOrWhiteSpace(rowData.ContactNumber) ? null : rowData.ContactNumber,
+                            EmergencyContactNumber = string.IsNullOrWhiteSpace(rowData.EmergencyContactNumber) ? null : rowData.EmergencyContactNumber,
+                            CreatedBy = createdByUserId
+                        };
+
+                        // Create user
+                        var createdUser = await CreateUserAsync(createUserDto);
+                        createdUsers.Add(createdUser);
+                        result.SuccessCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle user creation errors (e.g., duplicate email)
+                        var cellValues = new
+                        {
+                            FullName = row.Cell(1).GetString().Trim(),
+                            Email = row.Cell(2).GetString().Trim(),
+                            Role = row.Cell(4).GetString().Trim()
+                        };
+
+                        errors.Add(new UserImportErrorDto
+                        {
+                            RowNumber = rowNumber,
+                            ErrorMessage = ex.Message,
+                            FullName = cellValues.FullName,
+                            Email = cellValues.Email,
+                            Role = cellValues.Role
+                        });
+                        result.FailureCount++;
+                    }
+                }
+
+                result.Errors = errors;
+                result.CreatedUsers = createdUsers;
+
+                // Update log with final status
+                var finalStatus = result.FailureCount == 0 
+                    ? ExportImportConstants.Statuses.Completed 
+                    : (result.SuccessCount > 0 ? ExportImportConstants.Statuses.PartiallyCompleted : ExportImportConstants.Statuses.Failed);
+
+                await _exportImportLogService.UpdateLogStatusAsync(log.LogId, new UpdateExportImportLogDto
+                {
+                    Status = finalStatus,
+                    CompletedAt = DateTime.UtcNow,
+                    ErrorMessage = result.FailureCount > 0 ? $"{result.FailureCount} row(s) failed to import" : null
+                }, createdByUserId);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                // Update log with error status
+                await _exportImportLogService.UpdateLogStatusAsync(log.LogId, new UpdateExportImportLogDto
+                {
+                    Status = ExportImportConstants.Statuses.Failed,
+                    CompletedAt = DateTime.UtcNow,
+                    ErrorMessage = ex.Message
+                }, createdByUserId);
+
+                throw;
+            }
+        }
+
+        private bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private string GetRoleName(int roleId)
