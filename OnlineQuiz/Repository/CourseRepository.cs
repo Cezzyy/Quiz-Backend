@@ -17,7 +17,7 @@ namespace OnlineQuiz.Repository
         public async Task<Course> CreateAsync(Course course)
         {
             var response = await _supabaseService.GetClient().From<Course>().Insert(course);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to create course");
         }
 
         public async Task<Course?> GetByIdAsync(int courseId)
@@ -37,7 +37,7 @@ namespace OnlineQuiz.Repository
         public async Task<Course> UpdateAsync(Course course)
         {
             var response = await _supabaseService.GetClient().From<Course>().Update(course);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to update course");
         }
 
         public async Task<bool> DeleteAsync(int courseId)

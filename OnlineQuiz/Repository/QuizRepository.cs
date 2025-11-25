@@ -17,7 +17,7 @@ namespace OnlineQuiz.Repository
         public async Task<Quiz> CreateAsync(Quiz quiz)
         {
             var response = await _supabaseService.GetClient().From<Quiz>().Insert(quiz);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to create quiz");
         }
 
         public async Task<Quiz?> GetByIdAsync(int quizId)
@@ -39,7 +39,7 @@ namespace OnlineQuiz.Repository
         public async Task<Quiz> UpdateAsync(Quiz quiz)
         {
             var response = await _supabaseService.GetClient().From<Quiz>().Update(quiz);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to update quiz");
         }
 
         public async Task<bool> DeleteAsync(int quizId)
@@ -53,13 +53,13 @@ namespace OnlineQuiz.Repository
         public async Task<Question> CreateQuestionAsync(Question question)
         {
             var response = await _supabaseService.GetClient().From<Question>().Insert(question);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to create question");
         }
 
         public async Task<Choice> CreateChoiceAsync(Choice choice)
         {
             var response = await _supabaseService.GetClient().From<Choice>().Insert(choice);
-            return response.Model;
+            return response.Model ?? throw new InvalidOperationException("Failed to create choice");
         }
 
         public async Task<List<Question>> GetQuestionsByQuizIdAsync(int quizId)
