@@ -34,4 +34,20 @@ namespace OnlineQuiz.DTOs
         public DateTime Expiration { get; set; }
         public string TokenType { get; set; } = "Bearer";
     }
+    public class ChangePasswordDto
+    {
+        [Required(ErrorMessage = "Old password is required")]
+        public string OldPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "New password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordDto
+    {
+        [Required(ErrorMessage = "New password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+        public string NewPassword { get; set; } = string.Empty;
+    }
 }

@@ -19,5 +19,10 @@ namespace OnlineQuiz.IServices
         /// Get current user information from token
         /// </summary>
         Task<UserResponseDto?> GetCurrentUserAsync(int userId);
+
+        /// <summary>
+        /// Change user password
+        /// </summary>
+        Task ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
     }
 }

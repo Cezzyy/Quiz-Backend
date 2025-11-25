@@ -347,6 +347,18 @@ namespace OnlineQuiz.Services
             return await _userRepository.BulkDeleteAsync(userIds);
         }
 
+        public async Task ResetPasswordAsync(int userId, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User with ID {userId} not found");
+            }
+
+            user.PasswordHash = PasswordHasher.HashPassword(newPassword);
+            await _userRepository.UpdateAsync(user);
+        }
+
         private string GetRoleName(int roleId)
         {
             return roleId switch

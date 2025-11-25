@@ -11,5 +11,6 @@ namespace OnlineQuiz.IServices
         Task<bool> DeleteNotificationAsync(int notificationId, int userId);
         Task<bool> MarkAllAsReadAsync(int userId);
         Task NotifyStudentsOfNewQuizAsync(int quizId, int courseId, string quizTitle);
+        Task<int> BulkDeleteNotificationsAsync(List<int> notificationIds, int userId);
     }
 }

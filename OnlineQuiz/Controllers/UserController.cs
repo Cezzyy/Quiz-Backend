@@ -264,5 +264,49 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { error = "An error occurred while bulk deleting users", details = ex.Message });
             }
         }
+        /// <summary>
+        /// Reset user password (Admin only)
+        /// </summary>
+        [HttpPut("{id}/reset-password")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResetPassword(int id, [FromBody] ResetPasswordDto resetPasswordDto)
+        {
+            try
+            {
+                await _userService.ResetPasswordAsync(id, resetPasswordDto.NewPassword);
+
+                // Log activity
+                try
+                {
+                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        EntityId = id,
+                        Description = $"Reset password for user {id}",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log password reset: {logEx.Message}");
+                }
+
+                return Ok(new { message = "Password reset successfully" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while resetting password", details = ex.Message });
+            }
+        }
     }
 }

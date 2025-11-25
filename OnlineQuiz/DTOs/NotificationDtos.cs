@@ -34,4 +34,9 @@ namespace OnlineQuiz.DTOs
         public bool IsRead { get; set; }
         public DateTime CreatedAt { get; set; }
     }
+    public class BulkDeleteNotificationsDto
+    {
+        [Required]
+        public List<int> NotificationIds { get; set; } = new();
+    }
 }

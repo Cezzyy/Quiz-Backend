@@ -190,5 +190,54 @@ namespace OnlineQuiz.Controllers
                 });
             }
         }
+        /// <summary>
+        /// Change password
+        /// </summary>
+        [HttpPost("change-password")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            try
+            {
+                var userId = JwtTokenGenerator.GetUserId(User);
+                if (userId == null)
+                {
+                    return Unauthorized(new { error = "Invalid token" });
+                }
+
+                await _authService.ChangePasswordAsync(userId.Value, changePasswordDto);
+
+                // Log activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Auth,
+                        Description = "User changed password",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log password change: {logEx.Message}");
+                }
+
+                return Ok(new { message = "Password changed successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while changing password", details = ex.Message });
+            }
+        }
     }
 }

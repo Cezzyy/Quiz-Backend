@@ -98,5 +98,22 @@ namespace OnlineQuiz.Repository
                 return null;
             }
         }
+
+        public async Task UpdatePasswordAsync(int userId, string newPasswordHash)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException($"User with ID {userId} not found");
+            }
+
+            var client = _supabaseService.GetClient();
+            user.PasswordHash = newPasswordHash;
+            user.UpdatedAt = DateTime.UtcNow;
+            
+            await client.From<User>()
+                .Where(u => u.UserId == userId)
+                .Update(user);
+        }
     }
 }

@@ -11,5 +11,6 @@ namespace OnlineQuiz.IRepository
         Task<bool> DeleteAsync(int notificationId);
         Task<bool> MarkAllAsReadAsync(int userId);
         Task<List<Notification>> CreateBatchAsync(List<Notification> notifications);
+        Task<int> BulkDeleteAsync(List<int> notificationIds);
     }
 }

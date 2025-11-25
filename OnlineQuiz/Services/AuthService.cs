@@ -125,6 +125,21 @@ namespace OnlineQuiz.Services
             return await _userService.GetUserByIdAsync(userId);
         }
 
+        public async Task ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto)
+        {
+            var user = await _authRepository.VerifyUserCredentialsAsync(
+                (await _userService.GetUserByIdAsync(userId))?.Email ?? "", 
+                changePasswordDto.OldPassword);
+
+            if (user == null)
+            {
+                throw new ArgumentException("Incorrect old password");
+            }
+
+            var newPasswordHash = PasswordHasher.HashPassword(changePasswordDto.NewPassword);
+            await _authRepository.UpdatePasswordAsync(userId, newPasswordHash);
+        }
+
         private string GetRoleName(int roleId)
         {
             return roleId switch
