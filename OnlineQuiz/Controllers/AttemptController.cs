@@ -50,14 +50,26 @@ namespace OnlineQuiz.Controllers
         [HttpGet("{attemptId}")]
         [ProducesResponseType(typeof(AttemptResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<AttemptResponseDto>> GetAttemptById(int attemptId, [FromQuery] int userId)
         {
-            var attempt = await _attemptService.GetAttemptByIdAsync(attemptId, userId);
-            if (attempt == null)
+            try
             {
-                return NotFound(new { error = "Attempt not found" });
+                var attempt = await _attemptService.GetAttemptByIdAsync(attemptId, userId);
+                if (attempt == null)
+                {
+                    return NotFound(new { error = "Attempt not found" });
+                }
+                return Ok(attempt);
             }
-            return Ok(attempt);
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         /// <summary>

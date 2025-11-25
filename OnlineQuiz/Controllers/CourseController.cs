@@ -210,6 +210,7 @@ namespace OnlineQuiz.Controllers
         /// Delete a course (Admin only)
         /// </summary>
         [HttpDelete("{courseId}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> DeleteCourse(int courseId)

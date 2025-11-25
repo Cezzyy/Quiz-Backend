@@ -185,7 +185,7 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
-        /// Delete a quiz (Admin or Course Instructor only)
+        /// Delete a quiz (Course Instructor or Admin only)
         /// </summary>
         [HttpDelete("{quizId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

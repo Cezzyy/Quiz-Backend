@@ -80,7 +80,25 @@ namespace OnlineQuiz.Services
                 return null;
             }
 
-            var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+            // Authorization: User must own the attempt OR be the course instructor
+            if (attempt.UserId != userId)
+            {
+                var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+                if (quiz != null)
+                {
+                    var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+                    if (course == null || course.InstructorUserId != userId)
+                    {
+                        throw new UnauthorizedAccessException("You do not have permission to view this attempt");
+                    }
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to view this attempt");
+                }
+            }
+
+            var quizData = await _quizRepository.GetByIdAsync(attempt.QuizId);
             var student = await _userRepository.GetByIdAsync(attempt.UserId);
 
             return new AttemptResponseDto
@@ -89,7 +107,7 @@ namespace OnlineQuiz.Services
                 UserId = attempt.UserId,
                 StudentName = student?.FullName,
                 QuizId = attempt.QuizId,
-                QuizTitle = quiz?.Title,
+                QuizTitle = quizData?.Title,
                 StartedAt = attempt.StartedAt,
                 SubmittedAt = attempt.SubmittedAt,
                 Score = attempt.Score,
