@@ -13,19 +13,22 @@ namespace OnlineQuiz.Services
         private readonly ICourseRepository _courseRepository;
         private readonly IEnrollmentRepository _enrollmentRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
 
         public AttemptService(
             IAttemptRepository attemptRepository,
             IQuizRepository quizRepository,
             ICourseRepository courseRepository,
             IEnrollmentRepository enrollmentRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IUserRoleRepository userRoleRepository)
         {
             _attemptRepository = attemptRepository;
             _quizRepository = quizRepository;
             _courseRepository = courseRepository;
             _enrollmentRepository = enrollmentRepository;
             _userRepository = userRepository;
+            _userRoleRepository = userRoleRepository;
         }
 
         public async Task<AttemptResponseDto> StartAttemptAsync(StartAttemptDto startAttemptDto)
@@ -358,6 +361,189 @@ namespace OnlineQuiz.Services
 
             // All checks passed, proceed with bulk delete
             return await _attemptRepository.BulkDeleteAsync(attemptIds);
+        }
+
+        public async Task<(byte[] FileContent, string FileName)> ExportQuizScoresToExcelAsync(int userId, int? quizId, int? courseId)
+        {
+            // Verify user authorization
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException($"User with ID {userId} not found");
+            }
+
+            // Check authorization based on filters
+            if (quizId.HasValue)
+            {
+                var quiz = await _quizRepository.GetByIdAsync(quizId.Value);
+                if (quiz == null)
+                {
+                    throw new ArgumentException($"Quiz with ID {quizId} not found");
+                }
+
+                var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+                if (course != null && course.InstructorUserId != userId)
+                {
+                    // Not the instructor, must be admin
+                    var userRoles = await GetUserRolesAsync(userId);
+                    if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                    {
+                        throw new UnauthorizedAccessException("Only the course instructor or admin can export this quiz's scores");
+                    }
+                }
+            }
+            else if (courseId.HasValue)
+            {
+                var course = await _courseRepository.GetByIdAsync(courseId.Value);
+                if (course == null)
+                {
+                    throw new ArgumentException($"Course with ID {courseId} not found");
+                }
+
+                if (course.InstructorUserId != userId)
+                {
+                    // Not the instructor, must be admin
+                    var userRoles = await GetUserRolesAsync(userId);
+                    if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                    {
+                        throw new UnauthorizedAccessException("Only the course instructor or admin can export this course's scores");
+                    }
+                }
+            }
+            else
+            {
+                // No filter - admin only
+                var userRoles = await GetUserRolesAsync(userId);
+                if (!userRoles.Contains(Utilities.RoleConstants.Admin))
+                {
+                    throw new UnauthorizedAccessException("Only administrators can export all scores");
+                }
+            }
+
+            // Fetch attempts with filters
+            var attempts = await _attemptRepository.GetAllAttemptsForExportAsync(quizId, courseId);
+
+            if (!attempts.Any())
+            {
+                throw new InvalidOperationException("No submitted attempts found for the specified filters");
+            }
+
+            // Collect related data
+            var quizIds = attempts.Select(a => a.QuizId).Distinct().ToList();
+            var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
+
+            var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
+            var users = await _userRepository.GetByIdsAsync(userIds);
+            
+            var courseIds = quizzes.Select(q => q.CourseId).Distinct().ToList();
+            var courses = new Dictionary<int, Course>();
+            foreach (var cId in courseIds)
+            {
+                var c = await _courseRepository.GetByIdAsync(cId);
+                if (c != null) courses[cId] = c;
+            }
+
+            // Prepare data for export
+            var exportData = new List<ScoreExportDataDto>();
+            var quizMap = quizzes.ToDictionary(q => q.QuizId);
+            var userMap = users.ToDictionary(u => u.UserId);
+
+            foreach (var attempt in attempts)
+            {
+                var quiz = quizMap.GetValueOrDefault(attempt.QuizId);
+                var student = userMap.GetValueOrDefault(attempt.UserId);
+                var course = quiz != null ? courses.GetValueOrDefault(quiz.CourseId) : null;
+
+                // Get student ID from Student table
+                var studentRecord = await _userRepository.GetByIdAsync(attempt.UserId);
+                string studentId = studentRecord?.Email ?? "N/A";
+
+                exportData.Add(new ScoreExportDataDto
+                {
+                    StudentId = studentId,
+                    StudentName = student?.FullName ?? "Unknown",
+                    StudentEmail = student?.Email ?? "N/A",
+                    QuizTitle = quiz?.Title ?? "Unknown",
+                    CourseName = course?.Name ?? "Unknown",
+                    Score = attempt.Score,
+                    StartedAt = attempt.StartedAt,
+                    SubmittedAt = attempt.SubmittedAt,
+                    TimeSpentMinutes = attempt.TimeSpentSeconds.HasValue ? attempt.TimeSpentSeconds.Value / 60 : null
+                });
+            }
+
+            // Generate Excel file
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Quiz Scores");
+
+            // Add headers
+            worksheet.Cell(1, 1).Value = "Student ID";
+            worksheet.Cell(1, 2).Value = "Student Name";
+            worksheet.Cell(1, 3).Value = "Student Email";
+            worksheet.Cell(1, 4).Value = "Quiz Title";
+            worksheet.Cell(1, 5).Value = "Course Name";
+            worksheet.Cell(1, 6).Value = "Score";
+            worksheet.Cell(1, 7).Value = "Started At";
+            worksheet.Cell(1, 8).Value = "Submitted At";
+            worksheet.Cell(1, 9).Value = "Time Spent (Minutes)";
+
+            // Style headers
+            var headerRow = worksheet.Row(1);
+            headerRow.Style.Font.Bold = true;
+            headerRow.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+
+            // Add data rows
+            int row = 2;
+            foreach (var data in exportData)
+            {
+                worksheet.Cell(row, 1).Value = data.StudentId;
+                worksheet.Cell(row, 2).Value = data.StudentName;
+                worksheet.Cell(row, 3).Value = data.StudentEmail;
+                worksheet.Cell(row, 4).Value = data.QuizTitle;
+                worksheet.Cell(row, 5).Value = data.CourseName;
+                worksheet.Cell(row, 6).Value = (double)data.Score;
+                worksheet.Cell(row, 7).Value = data.StartedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 8).Value = data.SubmittedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A";
+                worksheet.Cell(row, 9).Value = data.TimeSpentMinutes?.ToString() ?? "N/A";
+                row++;
+            }
+
+            // Auto-fit columns
+            worksheet.Columns().AdjustToContents();
+
+            // Save to memory stream
+            using var stream = new System.IO.MemoryStream();
+            workbook.SaveAs(stream);
+            var fileContent = stream.ToArray();
+
+            // Generate filename
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            string fileName;
+            if (quizId.HasValue)
+            {
+                var quiz = quizMap.GetValueOrDefault(quizId.Value);
+                fileName = $"Quiz_Scores_{quiz?.Title ?? "Unknown"}_{timestamp}.xlsx";
+            }
+            else if (courseId.HasValue)
+            {
+                var course = courses.GetValueOrDefault(courseId.Value);
+                fileName = $"Course_Scores_{course?.Name ?? "Unknown"}_{timestamp}.xlsx";
+            }
+            else
+            {
+                fileName = $"All_Quiz_Scores_{timestamp}.xlsx";
+            }
+
+            // Sanitize filename
+            fileName = string.Join("_", fileName.Split(System.IO.Path.GetInvalidFileNameChars()));
+
+            return (fileContent, fileName);
+        }
+
+        private async Task<List<int>> GetUserRolesAsync(int userId)
+        {
+            var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+            return userRoles.Select(ur => ur.RoleId).ToList();
         }
     }
 }

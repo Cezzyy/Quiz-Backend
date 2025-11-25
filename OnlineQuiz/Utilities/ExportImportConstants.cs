@@ -7,6 +7,7 @@ namespace OnlineQuiz.Utilities
             public const string Export = "Export";
             public const string Import = "Import";
             public const string BulkImport = "BulkImport";
+            public const string ScoresExport = "ScoresExport";
         }
 
         public static class Statuses

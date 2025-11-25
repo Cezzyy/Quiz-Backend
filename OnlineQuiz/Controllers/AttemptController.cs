@@ -240,5 +240,58 @@ namespace OnlineQuiz.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Export quiz scores to Excel (Admin or Teacher only)
+        /// </summary>
+        [HttpGet("export")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ExportScores([FromQuery] int userId, [FromQuery] int? quizId, [FromQuery] int? courseId)
+        {
+            try
+            {
+                var (fileContent, fileName) = await _attemptService.ExportQuizScoresToExcelAsync(userId, quizId, courseId);
+
+                // Log the EXPORT activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId,
+                        Action = ActivityLogConstants.Actions.EXPORT,
+                        Entity = ActivityLogConstants.Entities.Attempt,
+                        Description = $"Exported quiz scores to {fileName}",
+                        NewValues = new { QuizId = quizId, CourseId = courseId, FileName = fileName },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log EXPORT activity: {logEx.Message}");
+                }
+
+                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
