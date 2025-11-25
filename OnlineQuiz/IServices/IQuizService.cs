@@ -9,5 +9,6 @@ namespace OnlineQuiz.IServices
         Task<QuizResponseDto?> GetQuizByIdAsync(int quizId);
         Task<QuizResponseDto> UpdateQuizAsync(int quizId, UpdateQuizDto updateQuizDto, int userId);
         Task<bool> DeleteQuizAsync(int quizId, int userId);
+        Task<int> BulkDeleteQuizzesAsync(List<int> quizIds, int userId);
     }
 }

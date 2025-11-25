@@ -79,5 +79,15 @@ namespace OnlineQuiz.Repository
                 .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
+
+        public async Task<int> BulkDeleteAsync(List<int> courseIds)
+        {
+            if (!courseIds.Any()) return 0;
+
+            await _supabaseService.GetClient().From<Course>()
+                .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
+                .Delete();
+            return courseIds.Count;
+        }
     }
 }

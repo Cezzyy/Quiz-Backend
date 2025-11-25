@@ -338,6 +338,15 @@ namespace OnlineQuiz.Services
             return await _userRepository.DeleteAsync(userId);
         }
 
+        public async Task<int> BulkDeleteAsync(List<int> userIds)
+        {
+            if (!userIds.Any()) return 0;
+
+            // Admin-only operation - authorization should be enforced at controller level
+            // Delete users (cascades to Student/Teacher/UserRole due to database constraints)
+            return await _userRepository.BulkDeleteAsync(userIds);
+        }
+
         private string GetRoleName(int roleId)
         {
             return roleId switch

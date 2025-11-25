@@ -22,5 +22,6 @@ namespace OnlineQuiz.IRepository
         Task<int> CountByCourseAsync(int courseId);
         Task<List<Quiz>> GetByCourseIdsAsync(List<int> courseIds);
         Task<int> CountByCourseIdsAsync(List<int> courseIds);
+        Task<int> BulkDeleteAsync(List<int> quizIds);
     }
 }

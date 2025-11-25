@@ -13,5 +13,6 @@ namespace OnlineQuiz.IRepository
         Task<List<Course>> GetByStudentIdAsync(int studentId);
         Task<int> CountAsync();
         Task<int> CountByInstructorAsync(int instructorId);
+        Task<int> BulkDeleteAsync(List<int> courseIds);
     }
 }

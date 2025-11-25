@@ -324,5 +324,39 @@ namespace OnlineQuiz.Services
 
             return await _quizRepository.DeleteAsync(quizId);
         }
+
+        public async Task<int> BulkDeleteQuizzesAsync(List<int> quizIds, int userId)
+        {
+            if (!quizIds.Any()) return 0;
+
+            // Fetch all quizzes to verify authorization
+            var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
+            
+            if (!quizzes.Any()) return 0;
+
+            // Get unique course IDs
+            var courseIds = quizzes.Select(q => q.CourseId).Distinct().ToList();
+            
+            // Check if user is admin
+            var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+            var isAdmin = userRoles.Any(ur => ur.RoleId == RoleConstants.Admin);
+
+            if (!isAdmin)
+            {
+                // Verify user owns all courses
+                var courses = await _courseRepository.GetByInstructorIdAsync(userId);
+                var ownedCourseIds = courses.Select(c => c.CourseId).ToHashSet();
+
+                foreach (var courseId in courseIds)
+                {
+                    if (!ownedCourseIds.Contains(courseId))
+                    {
+                        throw new UnauthorizedAccessException("You are not authorized to delete all the specified quizzes");
+                    }
+                }
+            }
+
+            return await _quizRepository.BulkDeleteAsync(quizIds);
+        }
     }
 }

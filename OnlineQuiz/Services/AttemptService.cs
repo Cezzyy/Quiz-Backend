@@ -300,5 +300,64 @@ namespace OnlineQuiz.Services
 
             return await _attemptRepository.DeleteAsync(attemptId);
         }
+
+        public async Task<int> BulkDeleteAttemptsAsync(List<int> attemptIds, int userId)
+        {
+            if (!attemptIds.Any()) return 0;
+
+            // Fetch all attempts to verify authorization
+            var attempts = new List<Attempt>();
+            foreach (var id in attemptIds)
+            {
+                var attempt = await _attemptRepository.GetByIdAsync(id);
+                if (attempt != null)
+                {
+                    attempts.Add(attempt);
+                }
+            }
+
+            if (!attempts.Any()) return 0;
+
+            // Get unique quiz IDs and course IDs
+            var quizIds = attempts.Select(a => a.QuizId).Distinct().ToList();
+            var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
+            var courseIds = quizzes.Select(q => q.CourseId).Distinct().ToList();
+            var courses = new List<Course>();
+            foreach (var courseId in courseIds)
+            {
+                var course = await _courseRepository.GetByIdAsync(courseId);
+                if (course != null)
+                {
+                    courses.Add(course);
+                }
+            }
+
+            // Check if user is a teacher for any of these courses
+            bool isTeacher = courses.Any(c => c.InstructorUserId == userId);
+
+            // Validate each attempt
+            foreach (var attempt in attempts)
+            {
+                bool isOwner = attempt.UserId == userId;
+                
+                // Find the course for this attempt
+                var quiz = quizzes.FirstOrDefault(q => q.QuizId == attempt.QuizId);
+                bool isInstructor = quiz != null && courses.Any(c => c.CourseId == quiz.CourseId && c.InstructorUserId == userId);
+                
+                if (!isOwner && !isInstructor)
+                {
+                    throw new UnauthorizedAccessException($"You do not have permission to delete attempt {attempt.AttemptId}");
+                }
+                
+                // If student (owner) and not instructor, can only delete if NOT submitted
+                if (isOwner && !isInstructor && attempt.SubmittedAt != null)
+                {
+                    throw new InvalidOperationException($"Cannot delete submitted attempt {attempt.AttemptId}");
+                }
+            }
+
+            // All checks passed, proceed with bulk delete
+            return await _attemptRepository.BulkDeleteAsync(attemptIds);
+        }
     }
 }
