@@ -1,18 +1,23 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class EnrollmentController : ControllerBase
     {
         private readonly ICourseService _courseService;
+        private readonly IActivityLogService _activityLogService;
 
-        public EnrollmentController(ICourseService courseService)
+        public EnrollmentController(ICourseService courseService, IActivityLogService activityLogService)
         {
             _courseService = courseService;
+            _activityLogService = activityLogService;
         }
 
         /// <summary>
@@ -51,6 +56,27 @@ namespace OnlineQuiz.Controllers
                 }
 
                 var enrollment = await _courseService.EnrollStudentAsync(enrollStudentDto);
+
+                // Log the ENROLL activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = enrollStudentDto.EnrolledBy,
+                        Action = ActivityLogConstants.Actions.ENROLL,
+                        Entity = ActivityLogConstants.Entities.Enrollment,
+                        EntityId = enrollment.EnrollmentId,
+                        Description = $"Enrolled student {enrollment.StudentName} in course {enrollment.CourseName}",
+                        NewValues = new { enrollment.EnrollmentId, enrollment.CourseId, enrollment.UserId, enrollment.EnrolledAt },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log ENROLL activity: {logEx.Message}");
+                }
+
                 return CreatedAtAction(nameof(GetCourseEnrollments), new { courseId = enrollment.CourseId }, enrollment);
             }
             catch (UnauthorizedAccessException ex)
@@ -150,6 +176,27 @@ namespace OnlineQuiz.Controllers
                 {
                     return NotFound(new { error = "Enrollment not found" });
                 }
+
+                // Log the UNENROLL activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = teacherId,
+                        Action = ActivityLogConstants.Actions.UNENROLL,
+                        Entity = ActivityLogConstants.Entities.Enrollment,
+                        // We don't have the enrollment ID here easily without fetching first, so we use 0 or leave it
+                        Description = $"Unenrolled student {studentId} from course {courseId}",
+                        OldValues = new { CourseId = courseId, StudentId = studentId },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log UNENROLL activity: {logEx.Message}");
+                }
+
                 return NoContent();
             }
             catch (UnauthorizedAccessException ex)

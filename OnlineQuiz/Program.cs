@@ -94,6 +94,7 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.ICourseRepository, OnlineQuiz.
 builder.Services.AddScoped<OnlineQuiz.IRepository.IQuizRepository, OnlineQuiz.Repository.QuizRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IEnrollmentRepository, OnlineQuiz.Repository.EnrollmentRepository>();
 builder.Services.AddScoped<OnlineQuiz.IRepository.IAuthRepository, OnlineQuiz.Repository.AuthRepository>();
+builder.Services.AddScoped<OnlineQuiz.IRepository.IActivityLogRepository, OnlineQuiz.Repository.ActivityLogRepository>();
 
 // Register Service Layer
 builder.Services.AddScoped<OnlineQuiz.IServices.IUserService, OnlineQuiz.Services.UserService>();
@@ -104,6 +105,8 @@ builder.Services.AddScoped<OnlineQuiz.IRepository.IAttemptAnswerRepository, Onli
 builder.Services.AddScoped<OnlineQuiz.IServices.IAttemptService, OnlineQuiz.Services.AttemptService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IAnswerService, OnlineQuiz.Services.AnswerService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IAuthService, OnlineQuiz.Services.AuthService>();
+builder.Services.AddScoped<OnlineQuiz.IServices.IActivityLogService, OnlineQuiz.Services.ActivityLogService>();
+
 
 
 // Configure CORS for Web (Vue) and Mobile (Flutter)

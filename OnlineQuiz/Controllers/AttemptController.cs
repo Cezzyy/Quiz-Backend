@@ -1,18 +1,23 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AttemptController : ControllerBase
     {
         private readonly IAttemptService _attemptService;
+        private readonly IActivityLogService _activityLogService;
 
-        public AttemptController(IAttemptService attemptService)
+        public AttemptController(IAttemptService attemptService, IActivityLogService activityLogService)
         {
             _attemptService = attemptService;
+            _activityLogService = activityLogService;
         }
 
         /// <summary>
@@ -109,6 +114,27 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var attempt = await _attemptService.SubmitAttemptAsync(attemptId, submitAttemptDto, studentId);
+
+                // Log the SUBMIT activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = studentId,
+                        Action = ActivityLogConstants.Actions.SUBMIT,
+                        Entity = ActivityLogConstants.Entities.Attempt,
+                        EntityId = attempt.AttemptId,
+                        Description = $"Submitted attempt for quiz {attempt.QuizId} with score {attempt.Score}",
+                        NewValues = new { attempt.AttemptId, attempt.QuizId, attempt.Score, attempt.SubmittedAt },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log SUBMIT activity: {logEx.Message}");
+                }
+
                 return Ok(attempt);
             }
             catch (ArgumentException ex)

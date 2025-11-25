@@ -160,6 +160,58 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<QuizResponseDto> UpdateQuizAsync(int quizId, UpdateQuizDto updateQuizDto, int userId)
+        {
+            // Verify quiz exists
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                throw new ArgumentException($"Quiz with ID {quizId} not found");
+            }
+
+            // Verify course exists
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException("Quiz belongs to a non-existent course");
+            }
+
+            // Verify user is the instructor
+            if (course.InstructorUserId != userId)
+            {
+                throw new UnauthorizedAccessException("Only the assigned instructor can update quizzes for this course");
+            }
+
+            // Update fields if provided
+            if (!string.IsNullOrEmpty(updateQuizDto.Title))
+            {
+                quiz.Title = updateQuizDto.Title;
+            }
+
+            if (updateQuizDto.DueAt.HasValue)
+            {
+                quiz.DueAt = updateQuizDto.DueAt;
+            }
+
+            if (updateQuizDto.TimeLimitMinutes.HasValue)
+            {
+                quiz.TimeLimitMinutes = updateQuizDto.TimeLimitMinutes;
+            }
+
+            if (updateQuizDto.IsPublished.HasValue)
+            {
+                quiz.IsPublished = updateQuizDto.IsPublished.Value;
+            }
+
+            quiz.UpdatedAt = DateTime.UtcNow;
+
+            var updatedQuiz = await _quizRepository.UpdateAsync(quiz);
+
+            // Return updated quiz with full details
+            return await GetQuizByIdAsync(updatedQuiz.QuizId)
+                ?? throw new InvalidOperationException("Failed to retrieve updated quiz");
+        }
+
         public async Task<bool> DeleteQuizAsync(int quizId, int userId)
         {
             var quiz = await _quizRepository.GetByIdAsync(quizId);
