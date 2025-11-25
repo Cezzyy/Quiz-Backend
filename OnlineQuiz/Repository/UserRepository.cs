@@ -56,6 +56,36 @@ namespace OnlineQuiz.Repository
             return result.Models;
         }
 
+        public async Task<int> CountAsync()
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>().Count(Postgrest.Constants.CountType.Exact);
+            return result;
+        }
+
+        public async Task<int> CountByRoleAsync(int roleId)
+        {
+            var client = _supabaseService.GetClient();
+            // Since we don't have a direct link in User table, we need to join with UserRole
+            // But Supabase-csharp join syntax can be tricky. 
+            // Alternative: Count from UserRole table.
+            var result = await client.From<UserRole>()
+                .Where(ur => ur.RoleId == roleId)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return result;
+        }
+
+        public async Task<List<User>> GetRecentRegistrationsAsync(int days)
+        {
+            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>()
+                .Filter("CreatedAt", Postgrest.Constants.Operator.GreaterThanOrEqual, cutoffDate.ToString("o"))
+                .Order("CreatedAt", Postgrest.Constants.Ordering.Descending)
+                .Get();
+            return result.Models;
+        }
+
         public async Task<User> UpdateAsync(User user)
         {
             user.UpdatedAt = DateTime.UtcNow;

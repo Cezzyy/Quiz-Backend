@@ -3,6 +3,7 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Models;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Services
 {
@@ -10,23 +11,23 @@ namespace OnlineQuiz.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly IUserRoleRepository _userRoleRepository;
+        private readonly IEnrollmentRepository _enrollmentRepository;
 
         public NotificationService(
             INotificationRepository notificationRepository,
-            IUserRoleRepository userRoleRepository)
+            IUserRoleRepository userRoleRepository,
+            IEnrollmentRepository enrollmentRepository)
         {
             _notificationRepository = notificationRepository;
             _userRoleRepository = userRoleRepository;
+            _enrollmentRepository = enrollmentRepository;
         }
 
         public async Task<NotificationResponseDto> CreateNotificationAsync(CreateNotificationDto createNotificationDto, int createdBy)
         {
-            // Check if creator is admin
-            var isAdmin = await _userRoleRepository.IsAdminAsync(createdBy);
-            if (!isAdmin)
-            {
-                throw new UnauthorizedAccessException("Only admins can create notifications");
-            }
+            // Note: Access control (e.g., only Admins can create manual notifications) 
+            // should be enforced at the Controller level. 
+            // This service method can be called by other services for system triggers.
 
             var notification = createNotificationDto.Adapt<Notification>();
             notification.CreatedAt = DateTime.UtcNow;
@@ -93,6 +94,29 @@ namespace OnlineQuiz.Services
             }
 
             return await _notificationRepository.DeleteAsync(notificationId);
+        }
+
+        public async Task<bool> MarkAllAsReadAsync(int userId)
+        {
+            return await _notificationRepository.MarkAllAsReadAsync(userId);
+        }
+
+        public async Task NotifyStudentsOfNewQuizAsync(int quizId, int courseId, string quizTitle)
+        {
+            var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
+            if (!enrollments.Any()) return;
+
+            var notifications = enrollments.Select(e => new Notification
+            {
+                UserId = e.UserId,
+                Type = NotificationConstants.TypeQuiz,
+                Title = "New Quiz Available",
+                Message = $"A new quiz '{quizTitle}' has been published in your course.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            }).ToList();
+
+            await _notificationRepository.CreateBatchAsync(notifications);
         }
     }
 }

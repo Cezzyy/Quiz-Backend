@@ -65,5 +65,19 @@ namespace OnlineQuiz.Repository
 
             return response.Models.Select(e => e.Course).Where(c => c != null).Cast<Course>().ToList();
         }
+
+        public async Task<int> CountAsync()
+        {
+            var response = await _supabaseService.GetClient().From<Course>().Count(Postgrest.Constants.CountType.Exact);
+            return response;
+        }
+
+        public async Task<int> CountByInstructorAsync(int instructorId)
+        {
+            var response = await _supabaseService.GetClient().From<Course>()
+                .Where(c => c.InstructorUserId == instructorId)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return response;
+        }
     }
 }

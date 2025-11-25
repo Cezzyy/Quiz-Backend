@@ -9,5 +9,7 @@ namespace OnlineQuiz.IRepository
         Task<List<Notification>> GetByUserIdAsync(int userId);
         Task<Notification> UpdateAsync(Notification notification);
         Task<bool> DeleteAsync(int notificationId);
+        Task<bool> MarkAllAsReadAsync(int userId);
+        Task<List<Notification>> CreateBatchAsync(List<Notification> notifications);
     }
 }

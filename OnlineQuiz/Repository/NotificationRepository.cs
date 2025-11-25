@@ -54,5 +54,25 @@ namespace OnlineQuiz.Repository
                 .Delete();
             return true;
         }
+
+        public async Task<bool> MarkAllAsReadAsync(int userId)
+        {
+            var client = _supabaseService.GetClient();
+            await client.From<Notification>()
+                .Where(n => n.UserId == userId && n.IsRead == false)
+                .Set(n => n.IsRead, true)
+                .Update();
+            return true;
+        }
+
+        public async Task<List<Notification>> CreateBatchAsync(List<Notification> notifications)
+        {
+            if (notifications == null || !notifications.Any())
+                return new List<Notification>();
+
+            var client = _supabaseService.GetClient();
+            var result = await client.From<Notification>().Insert(notifications);
+            return result.Models;
+        }
     }
 }
