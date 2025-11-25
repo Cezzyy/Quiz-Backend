@@ -58,25 +58,12 @@ namespace OnlineQuiz.Repository
 
         public async Task<List<Course>> GetByStudentIdAsync(int studentId)
         {
-            // This requires a join or a two-step query since Supabase C# SDK joins can be tricky
-            // Step 1: Get Enrollment records for the student
-            var enrollments = await _supabaseService.GetClient().From<Enrollment>()
+            var response = await _supabaseService.GetClient().From<Enrollment>()
+                .Select("*")
                 .Where(e => e.UserId == studentId)
                 .Get();
-            
-            var courseIds = enrollments.Models.Select(e => e.CourseId).ToList();
 
-            if (!courseIds.Any())
-            {
-                return new List<Course>();
-            }
-
-            // Step 2: Get Courses by IDs
-            var response = await _supabaseService.GetClient().From<Course>()
-                .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
-                .Get();
-                
-            return response.Models;
+            return response.Models.Select(e => e.Course).Where(c => c != null).ToList();
         }
     }
 }

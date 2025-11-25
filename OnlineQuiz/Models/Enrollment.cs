@@ -29,5 +29,8 @@ namespace OnlineQuiz.Models
         [Required]
         [Column("EnrolledBy")]
         public int EnrolledBy { get; set; }
+
+        [Reference(typeof(Course))]
+        public Course? Course { get; set; }
     }
 }
