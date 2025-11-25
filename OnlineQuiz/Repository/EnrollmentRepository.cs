@@ -34,5 +34,13 @@ namespace OnlineQuiz.Repository
                 .Get();
             return response.Models;
         }
+
+        public async Task<bool> DeleteAsync(int enrollmentId)
+        {
+            await _supabaseService.GetClient().From<Enrollment>()
+                .Where(e => e.EnrollmentId == enrollmentId)
+                .Delete();
+            return true;
+        }
     }
 }

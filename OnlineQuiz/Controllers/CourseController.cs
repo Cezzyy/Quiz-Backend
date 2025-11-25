@@ -35,6 +35,17 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
+        /// Get all courses
+        /// </summary>
+        [HttpGet]
+        [ProducesResponseType(typeof(List<CourseResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<CourseResponseDto>>> GetAllCourses()
+        {
+            var courses = await _courseService.GetAllCoursesAsync();
+            return Ok(courses);
+        }
+
+        /// <summary>
         /// Get courses assigned to a teacher
         /// </summary>
         [HttpGet("teacher/{teacherId}")]
@@ -96,6 +107,54 @@ namespace OnlineQuiz.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+
+        /// <summary>
+        /// Update a course (Admin only - can reassign instructor)
+        /// </summary>
+        [HttpPut("{courseId}")]
+        [ProducesResponseType(typeof(CourseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int courseId, [FromBody] UpdateCourseDto updateCourseDto)
+        {
+            try
+            {
+                var course = await _courseService.UpdateCourseAsync(courseId, updateCourseDto);
+                return Ok(course);
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete a course (Admin only)
+        /// </summary>
+        [HttpDelete("{courseId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> DeleteCourse(int courseId)
+        {
+            try
+            {
+                var result = await _courseService.DeleteCourseAsync(courseId);
+                if (!result)
+                {
+                    return NotFound(new { error = "Course not found" });
+                }
+                return NoContent();
             }
             catch (Exception ex)
             {

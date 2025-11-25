@@ -7,5 +7,6 @@ namespace OnlineQuiz.IRepository
         Task<Enrollment> CreateAsync(Enrollment enrollment);
         Task<bool> ExistsAsync(int studentId, int courseId);
         Task<List<Enrollment>> GetByCourseIdAsync(int courseId);
+        Task<bool> DeleteAsync(int enrollmentId);
     }
 }

@@ -65,7 +65,7 @@ namespace OnlineQuiz.Services
             // Map to DTOs
             var response = courses.Adapt<List<CourseResponseDto>>();
             
-            // Populate instructor name (optimization: could be done with a join or cache, but loop is fine for now)
+            // Optimization: Fetch instructor once since it's the same for all courses
             if (courses.Any())
             {
                 var instructorUser = await _userRepository.GetByIdAsync(teacherId);
@@ -186,6 +186,103 @@ namespace OnlineQuiz.Services
                 });
             }
 
+            return response;
+        }
+
+        public async Task<bool> UnenrollStudentAsync(int courseId, int studentId, int teacherId)
+        {
+            // Verify course exists
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new ArgumentException("Course not found");
+            }
+
+            // Verify teacher is the instructor
+            if (course.InstructorId != teacherId)
+            {
+                throw new UnauthorizedAccessException("Only the assigned instructor can unenroll students");
+            }
+
+            // Check if enrollment exists
+            if (!await _enrollmentRepository.ExistsAsync(studentId, courseId))
+            {
+                return false; // Enrollment doesn't exist
+            }
+
+            // Delete enrollment
+            var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
+            var enrollment = enrollments.FirstOrDefault(e => e.UserId == studentId);
+            
+            if (enrollment == null)
+            {
+                return false;
+            }
+
+            return await _enrollmentRepository.DeleteAsync(enrollment.EnrollmentId);
+        }
+
+        public async Task<CourseResponseDto> UpdateCourseAsync(int courseId, UpdateCourseDto updateCourseDto)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new ArgumentException($"Course with ID {courseId} not found");
+            }
+
+            // Update fields if provided
+            if (!string.IsNullOrEmpty(updateCourseDto.Name)) course.Name = updateCourseDto.Name;
+            if (!string.IsNullOrEmpty(updateCourseDto.Status)) course.Status = updateCourseDto.Status;
+            if (!string.IsNullOrEmpty(updateCourseDto.Category)) course.Category = updateCourseDto.Category;
+            if (!string.IsNullOrEmpty(updateCourseDto.Section)) course.Section = updateCourseDto.Section;
+            
+            // Handle Instructor Assignment
+            if (updateCourseDto.InstructorId.HasValue)
+            {
+                var instructor = await _teacherRepository.GetByUserIdAsync(updateCourseDto.InstructorId.Value);
+                if (instructor == null)
+                {
+                    throw new ArgumentException($"Instructor with ID {updateCourseDto.InstructorId} not found");
+                }
+                course.InstructorId = updateCourseDto.InstructorId.Value;
+            }
+
+            course.UpdatedAt = DateTime.UtcNow;
+
+            var updatedCourse = await _courseRepository.UpdateAsync(course);
+            
+            // Fetch instructor details
+            var instructorUser = await _userRepository.GetByIdAsync(updatedCourse.InstructorId);
+            
+            var response = updatedCourse.Adapt<CourseResponseDto>();
+            response.InstructorName = instructorUser?.FullName;
+            
+            return response;
+        }
+
+        public async Task<bool> DeleteCourseAsync(int courseId)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                return false;
+            }
+
+            return await _courseRepository.DeleteAsync(courseId);
+        }
+
+        public async Task<List<CourseResponseDto>> GetAllCoursesAsync()
+        {
+            var courses = await _courseRepository.GetAllAsync();
+            var response = courses.Adapt<List<CourseResponseDto>>();
+            
+            // Populate instructor names
+            foreach (var dto in response)
+            {
+                var instructorUser = await _userRepository.GetByIdAsync(dto.InstructorId);
+                dto.InstructorName = instructorUser?.FullName;
+            }
+            
             return response;
         }
     }

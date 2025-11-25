@@ -1,4 +1,4 @@
-    using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 
@@ -77,6 +77,7 @@ namespace OnlineQuiz.Controllers
             }
             return Ok(quiz);
         }
+
         /// <summary>
         /// Delete a quiz (Admin or Course Instructor only)
         /// </summary>

@@ -145,6 +145,10 @@ app.Use(async (context, next) =>
     await next();
 });
 
+
+
+
+
 app.UseAuthorization();
 
 // Redirect root path to Scalar API documentation
