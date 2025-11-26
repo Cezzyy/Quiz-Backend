@@ -15,11 +15,13 @@ namespace OnlineQuiz.Controllers
     {
         private readonly INotificationService _notificationService;
         private readonly IUserService _userService;
+        private readonly IActivityLogService _activityLogService;
 
-        public NotificationController(INotificationService notificationService, IUserService userService)
+        public NotificationController(INotificationService notificationService, IUserService userService, IActivityLogService activityLogService)
         {
             _notificationService = notificationService;
             _userService = userService;
+            _activityLogService = activityLogService;
         }
 
         [HttpGet]
@@ -51,6 +53,26 @@ namespace OnlineQuiz.Controllers
             try
             {
                 var notification = await _notificationService.MarkAsReadAsync(id, userId);
+
+                // Log activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Notification,
+                        EntityId = id,
+                        Description = $"Marked notification as read: {notification.Title}",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to log UPDATE notification activity: {ex.Message}");
+                }
+
                 return Ok(notification);
             }
             catch (ArgumentException)
@@ -68,6 +90,26 @@ namespace OnlineQuiz.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             await _notificationService.MarkAllAsReadAsync(userId);
+
+            // Log activity
+            try
+            {
+                await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                {
+                    UserId = userId,
+                    Action = ActivityLogConstants.Actions.UPDATE,
+                    Entity = ActivityLogConstants.Entities.Notification,
+                    EntityId = null,
+                    Description = "Marked all notifications as read",
+                    IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                    UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to log UPDATE all notifications activity: {ex.Message}");
+            }
+
             return Ok(new { message = "All notifications marked as read" });
         }
 
@@ -82,6 +124,26 @@ namespace OnlineQuiz.Controllers
                 {
                     return NotFound();
                 }
+
+                // Log activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.Notification,
+                        EntityId = id,
+                        Description = $"Deleted notification ID: {id}",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to log DELETE notification activity: {ex.Message}");
+                }
+
                 return NoContent();
             }
             catch (UnauthorizedAccessException)
@@ -91,19 +153,19 @@ namespace OnlineQuiz.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")] // Only Admins can manually create notifications via API
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<NotificationResponseDto>> CreateNotification([FromBody] CreateNotificationDto createNotificationDto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            
+
             // Validate notification type
-            var validTypes = new[] { 
-                NotificationConstants.TypeQuiz, 
-                NotificationConstants.TypeCourse, 
-                NotificationConstants.TypeSystem, 
-                NotificationConstants.TypeReminder,
-                NotificationConstants.TypeAnnouncement 
-            };
+            var validTypes = new[] {
+        NotificationConstants.TypeQuiz,
+        NotificationConstants.TypeCourse,
+        NotificationConstants.TypeSystem,
+        NotificationConstants.TypeReminder,
+        NotificationConstants.TypeAnnouncement
+    };
 
             if (!validTypes.Contains(createNotificationDto.Type))
             {
@@ -111,6 +173,26 @@ namespace OnlineQuiz.Controllers
             }
 
             var notification = await _notificationService.CreateNotificationAsync(createNotificationDto, userId);
+
+            // Log activity
+            try
+            {
+                await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                {
+                    UserId = userId,
+                    Action = ActivityLogConstants.Actions.CREATE,
+                    Entity = ActivityLogConstants.Entities.Notification,
+                    EntityId = notification.NotificationId,
+                    Description = $"Admin created notification: {notification.Title} (Type: {notification.Type})",
+                    IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                    UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to log CREATE notification activity: {ex.Message}");
+            }
+
             return CreatedAtAction(nameof(GetNotification), new { id = notification.NotificationId }, notification);
         }
         [HttpDelete("bulk")]
@@ -121,6 +203,26 @@ namespace OnlineQuiz.Controllers
             try
             {
                 await _notificationService.BulkDeleteNotificationsAsync(dto.NotificationIds, userId);
+
+                // Log activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = userId,
+                        Action = ActivityLogConstants.Actions.DELETE,
+                        Entity = ActivityLogConstants.Entities.Notification,
+                        EntityId = null,
+                        Description = $"Bulk deleted {dto.NotificationIds.Count} notifications",
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to log BULK DELETE notifications activity: {ex.Message}");
+                }
+
                 return NoContent();
             }
             catch (Exception ex)

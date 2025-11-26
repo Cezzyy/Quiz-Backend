@@ -54,12 +54,16 @@ namespace OnlineQuiz.Services
                 DueAt = createQuizDto.DueAt,
                 TimeLimitMinutes = createQuizDto.TimeLimitMinutes,
                 CreatedBy = createQuizDto.CreatedBy,
-                IsPublished = false, // Default to draft
+                IsPublished = createQuizDto.IsPublished,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             var createdQuiz = await _quizRepository.CreateAsync(quiz);
+
+            // Build response DTO directly instead of fetching back
+            var response = createdQuiz.Adapt<QuizResponseDto>();
+            response.Questions = new List<QuestionResponseDto>();
 
             // Add Questions
             foreach (var qDto in createQuizDto.Questions)
@@ -74,6 +78,10 @@ namespace OnlineQuiz.Services
                 };
                 var createdQuestion = await _quizRepository.CreateQuestionAsync(question);
 
+                // Build question response
+                var questionResponse = createdQuestion.Adapt<QuestionResponseDto>();
+                questionResponse.Choices = new List<ChoiceResponseDto>();
+
                 foreach (var cDto in qDto.Choices)
                 {
                     var choice = new Choice
@@ -82,8 +90,13 @@ namespace OnlineQuiz.Services
                         Body = cDto.Body,
                         IsCorrect = cDto.IsCorrect
                     };
-                    await _quizRepository.CreateChoiceAsync(choice);
+                    var createdChoice = await _quizRepository.CreateChoiceAsync(choice);
+                    
+                    // Add to response
+                    questionResponse.Choices.Add(createdChoice.Adapt<ChoiceResponseDto>());
                 }
+                
+                response.Questions.Add(questionResponse);
             }
 
             // Trigger notification if published immediately (though default is false)
@@ -92,8 +105,7 @@ namespace OnlineQuiz.Services
                 await _notificationService.NotifyStudentsOfNewQuizAsync(createdQuiz.QuizId, createdQuiz.CourseId, createdQuiz.Title);
             }
 
-            return await GetQuizByIdAsync(createdQuiz.QuizId) 
-                ?? throw new InvalidOperationException("Failed to retrieve created quiz");
+            return response;
         }
 
         public async Task<List<QuizResponseDto>> GetQuizzesForCourseAsync(int courseId, int userId, bool isStudent)

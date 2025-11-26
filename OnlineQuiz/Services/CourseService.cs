@@ -167,17 +167,32 @@ namespace OnlineQuiz.Services
 
             var createdEnrollment = await _enrollmentRepository.CreateAsync(enrollment);
             
-            var studentUser = await _userRepository.GetByIdAsync(enrollStudentDto.StudentId);
+            var studentUserTask = _userRepository.GetByIdAsync(enrollStudentDto.StudentId);
+            var studentDetailsTask = _studentRepository.GetByUserIdAsync(enrollStudentDto.StudentId);
+            var enrolledByUserTask = _userRepository.GetByIdAsync(enrollStudentDto.EnrolledBy);
+
+            await Task.WhenAll(studentUserTask, studentDetailsTask, enrolledByUserTask);
+
+            var studentUser = await studentUserTask;
+            var studentDetails = await studentDetailsTask;
+            var enrolledByUser = await enrolledByUserTask;
 
             return new EnrollmentResponseDto
             {
                 EnrollmentId = createdEnrollment.EnrollmentId,
+                StudentId = createdEnrollment.UserId,
                 UserId = createdEnrollment.UserId,
                 StudentName = studentUser?.FullName,
+                Email = studentUser?.Email,
+                StudentNumber = studentDetails?.StudentId,
                 CourseId = createdEnrollment.CourseId,
                 CourseName = course.Name,
+                CourseCode = course.Code,
                 EnrolledAt = createdEnrollment.EnrolledAt,
-                Section = createdEnrollment.Section
+                Section = createdEnrollment.Section,
+                StudentSection = studentDetails?.Section,
+                EnrolledBy = createdEnrollment.EnrolledBy,
+                EnrolledByName = enrolledByUser?.FullName
             };
         }
 
@@ -197,30 +212,73 @@ namespace OnlineQuiz.Services
             var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
             var response = new List<EnrollmentResponseDto>();
 
-            // Collect user IDs
+            // Collect user IDs (students)
             var userIds = enrollments.Select(e => e.UserId).Distinct().ToList();
             
-            // Batch fetch students
-            var students = await _userRepository.GetByIdsAsync(userIds);
-            var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+            // Collect EnrolledBy IDs
+            var enrolledByIds = enrollments.Select(e => e.EnrolledBy).Distinct().ToList();
+
+            // Batch fetch students (User)
+            var studentsTask = _userRepository.GetByIdsAsync(userIds);
+            
+            // Batch fetch student details (Student)
+            var studentDetailsTask = _studentRepository.GetByIdsAsync(userIds);
+
+            // Batch fetch enrolledBy users
+            var enrolledByUsersTask = _userRepository.GetByIdsAsync(enrolledByIds);
+
+            await Task.WhenAll(studentsTask, studentDetailsTask, enrolledByUsersTask);
+
+            var students = await studentsTask;
+            var studentMap = students.ToDictionary(u => u.UserId, u => u);
+
+            var studentDetails = await studentDetailsTask;
+            var studentDetailsMap = studentDetails.ToDictionary(s => s.UserId, s => s);
+
+            var enrolledByUsers = await enrolledByUsersTask;
+            var enrolledByMap = enrolledByUsers.ToDictionary(u => u.UserId, u => u.FullName);
 
             foreach (var enrollment in enrollments)
             {
                 string? studentName = null;
-                if (studentMap.TryGetValue(enrollment.UserId, out var name))
+                string? email = null;
+                string? studentNumber = null;
+                string? studentSection = null;
+
+                if (studentMap.TryGetValue(enrollment.UserId, out var user))
                 {
-                    studentName = name;
+                    studentName = user.FullName;
+                    email = user.Email;
+                }
+
+                if (studentDetailsMap.TryGetValue(enrollment.UserId, out var details))
+                {
+                    studentNumber = details.StudentId;
+                    studentSection = details.Section;
+                }
+
+                string? enrolledByName = null;
+                if (enrolledByMap.TryGetValue(enrollment.EnrolledBy, out var name))
+                {
+                    enrolledByName = name;
                 }
 
                 response.Add(new EnrollmentResponseDto
                 {
                     EnrollmentId = enrollment.EnrollmentId,
+                    StudentId = enrollment.UserId,
                     UserId = enrollment.UserId,
                     StudentName = studentName,
+                    Email = email,
+                    StudentNumber = studentNumber,
                     CourseId = enrollment.CourseId,
                     CourseName = course.Name,
+                    CourseCode = course.Code,
                     EnrolledAt = enrollment.EnrolledAt,
-                    Section = enrollment.Section
+                    Section = enrollment.Section,
+                    StudentSection = studentSection,
+                    EnrolledBy = enrollment.EnrolledBy,
+                    EnrolledByName = enrolledByName
                 });
             }
 
