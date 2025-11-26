@@ -8,7 +8,7 @@ namespace OnlineQuiz.Models
     public class Notification : BaseModel
     {
         [PrimaryKey("NotificationId")]
-        [Column("NotificationId")]
+        [Column("NotificationId", ignoreOnInsert: true)]
         public int NotificationId { get; set; }
 
         [Required]

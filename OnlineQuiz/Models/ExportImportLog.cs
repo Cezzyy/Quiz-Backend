@@ -8,7 +8,7 @@ namespace OnlineQuiz.Models
     public class ExportImportLog : BaseModel
     {
         [PrimaryKey("LogId")]
-        [Column("LogId")]
+        [Column("LogId", ignoreOnInsert: true)]
         public int LogId { get; set; }
 
         [Required]

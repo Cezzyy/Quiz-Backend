@@ -18,7 +18,8 @@ namespace OnlineQuiz.Repository
         public async Task<ActivityLog> CreateAsync(ActivityLog log)
         {
             var client = _supabaseService.GetClient();
-            var result = await client.From<ActivityLog>().Insert(log);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var result = await client.From<ActivityLog>().Insert(log, options);
             return result.Models.First();
         }
 

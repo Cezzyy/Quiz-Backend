@@ -8,7 +8,7 @@ namespace OnlineQuiz.Models
     public class Role : BaseModel
     {
         [PrimaryKey("RoleId")]
-        [Column("RoleId")]
+        [Column("RoleId", ignoreOnInsert: true)]
         public int RoleId { get; set; }
 
         [Required]
