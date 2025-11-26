@@ -525,8 +525,8 @@ namespace OnlineQuiz.Services
                             CreatedBy = createdByUserId
                         };
 
-                        // Create user
-                        var createdUser = await CreateUserAsync(createUserDto);
+                        // Create user (optimized for bulk import - skip GetUserByIdAsync)
+                        var createdUser = await CreateUserForBulkImportAsync(createUserDto);
                         createdUsers.Add(createdUser);
                         result.SuccessCount++;
                     }
@@ -579,6 +579,124 @@ namespace OnlineQuiz.Services
                     ErrorMessage = ex.Message
                 }, createdByUserId);
 
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Optimized user creation for bulk import - skips GetUserByIdAsync to reduce DB calls
+        /// </summary>
+        private async Task<UserResponseDto> CreateUserForBulkImportAsync(CreateUserDto createUserDto)
+        {
+            // Validate role-specific requirements
+            if (createUserDto.RoleId == RoleConstants.Student && string.IsNullOrEmpty(createUserDto.StudentId))
+            {
+                throw new ArgumentException("StudentId is required for students");
+            }
+
+            // Check if email already exists
+            var existingUser = await _userRepository.GetByEmailAsync(createUserDto.Email);
+            if (existingUser != null)
+            {
+                throw new InvalidOperationException($"User with email {createUserDto.Email} already exists");
+            }
+
+            // Create User entity
+            var user = new User
+            {
+                Email = createUserDto.Email,
+                PasswordHash = PasswordHasher.HashPassword(createUserDto.Password),
+                FullName = createUserDto.FullName,
+                Status = "Active",
+                ContactNumber = createUserDto.ContactNumber ?? string.Empty,
+                EmergencyContactNumber = createUserDto.EmergencyContactNumber ?? string.Empty,
+                CreatedBy = createUserDto.CreatedBy,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            // Insert user
+            var createdUser = await _userRepository.CreateAsync(user);
+
+            try
+            {
+                // Create UserRole entry
+                var userRole = new UserRole
+                {
+                    UserId = createdUser.UserId,
+                    RoleId = createUserDto.RoleId
+                };
+                await _userRoleRepository.CreateAsync(userRole);
+
+                // Create role-specific entity based on RoleId
+                switch (createUserDto.RoleId)
+                {
+                    case RoleConstants.Student:
+                        var student = new Student
+                        {
+                            UserId = createdUser.UserId,
+                            StudentId = createUserDto.StudentId!,
+                            YearLevel = createUserDto.YearLevel,
+                            Section = createUserDto.Section,
+                            Course = createUserDto.Course
+                        };
+                        await _studentRepository.CreateAsync(student);
+                        break;
+
+                    case RoleConstants.Teacher:
+                        var teacher = new Teacher
+                        {
+                            UserId = createdUser.UserId,
+                            Department = createUserDto.Department
+                        };
+                        await _teacherRepository.CreateAsync(teacher);
+                        break;
+
+                    case RoleConstants.Admin:
+                        break;
+                }
+
+                // Return lightweight DTO without additional DB call
+                var response = new UserResponseDto
+                {
+                    UserId = createdUser.UserId,
+                    Email = createdUser.Email,
+                    FullName = createdUser.FullName,
+                    Status = createdUser.Status,
+                    RoleId = createUserDto.RoleId,
+                    RoleName = GetRoleName(createUserDto.RoleId),
+                    ContactNumber = createdUser.ContactNumber,
+                    EmergencyContactNumber = createdUser.EmergencyContactNumber,
+                    CreatedAt = createdUser.CreatedAt,
+                    UpdatedAt = createdUser.UpdatedAt,
+                    CreatedBy = createdUser.CreatedBy
+                };
+
+                // Add role-specific data
+                if (createUserDto.RoleId == RoleConstants.Student)
+                {
+                    response.Student = new StudentData
+                    {
+                        StudentId = createUserDto.StudentId!,
+                        YearLevel = createUserDto.YearLevel,
+                        Section = createUserDto.Section,
+                        Course = createUserDto.Course
+                    };
+                }
+                else if (createUserDto.RoleId == RoleConstants.Teacher)
+                {
+                    response.Teacher = new TeacherData
+                    {
+                        Department = createUserDto.Department
+                    };
+                }
+
+                return response;
+            }
+            catch (Exception)
+            {
+                // Manual Rollback: Delete the partially created user
+                await _userRepository.DeleteAsync(createdUser.UserId);
                 throw;
             }
         }

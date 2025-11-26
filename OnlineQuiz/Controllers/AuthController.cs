@@ -53,7 +53,7 @@ namespace OnlineQuiz.Controllers
                 {
                     HttpOnly = true, // Prevents JavaScript access (XSS protection)
                     Secure = true, // Only send over HTTPS
-                    SameSite = SameSiteMode.Lax, // CSRF protection
+                    SameSite = SameSiteMode.None, // Required for cross-origin requests (different ports)
                     Expires = loginResponse.TokenExpiration
                 };
 
@@ -97,19 +97,19 @@ namespace OnlineQuiz.Controllers
         /// </summary>
         /// <returns>Success message</returns>
         [HttpPost("logout")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Logout()
         {
-            // Extract user ID from JWT token
+            // Extract user ID from JWT token (if present and valid)
             var userId = JwtTokenGenerator.GetUserId(User);
 
             // Delete the JWT cookie
             Response.Cookies.Delete("jwt");
             Console.WriteLine("JWT cookie deleted");
 
-            // Log the LOGOUT activity
-            if (userId.HasValue)
+            // Log the LOGOUT activity (only if we have a valid user ID)
+            if (userId.HasValue && userId.Value > 0)
             {
                 try
                 {

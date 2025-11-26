@@ -6,17 +6,17 @@ namespace OnlineQuiz.Utilities
         {
             public const string Export = "Export";
             public const string Import = "Import";
-            public const string BulkImport = "BulkImport";
-            public const string ScoresExport = "ScoresExport";
+            public const string BulkImport = "Import"; // Changed to match DB constraint
+            public const string ScoresExport = "Export"; // Changed to match DB constraint
         }
 
         public static class Statuses
         {
             public const string Pending = "Pending";
-            public const string InProgress = "InProgress";
+            public const string InProgress = "In Progress"; // Changed to match DB constraint
             public const string Completed = "Completed";
             public const string Failed = "Failed";
-            public const string PartiallyCompleted = "PartiallyCompleted";
+            public const string PartiallyCompleted = "Completed"; // Changed to match DB constraint (no partial status in DB)
         }
     }
 }
