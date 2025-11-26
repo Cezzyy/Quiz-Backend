@@ -8,7 +8,7 @@ namespace OnlineQuiz.Models
     public class AttemptAnswer : BaseModel
     {
         [PrimaryKey("AttemptAnswerId")]
-        [Column("AttemptAnswerId")]
+        [Column("AttemptAnswerId", ignoreOnInsert: true)]
         public int AttemptAnswerId { get; set; }
 
         [Required]

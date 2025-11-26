@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Postgrest.Attributes;
 using Postgrest.Models;
 
@@ -8,7 +9,7 @@ namespace OnlineQuiz.Models
     public class ActivityLog : BaseModel
     {
         [PrimaryKey("ActivityLogId")]
-        [Column("ActivityLogId")]
+        [Column("ActivityLogId", ignoreOnInsert: true)]
         public long ActivityLogId { get; set; }
 
         [Required]
