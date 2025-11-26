@@ -16,7 +16,8 @@ namespace OnlineQuiz.Repository
 
         public async Task<Quiz> CreateAsync(Quiz quiz)
         {
-            var response = await _supabaseService.GetClient().From<Quiz>().Insert(quiz);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var response = await _supabaseService.GetClient().From<Quiz>().Insert(quiz, options);
             return response.Model ?? throw new InvalidOperationException("Failed to create quiz");
         }
 
@@ -52,13 +53,15 @@ namespace OnlineQuiz.Repository
 
         public async Task<Question> CreateQuestionAsync(Question question)
         {
-            var response = await _supabaseService.GetClient().From<Question>().Insert(question);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var response = await _supabaseService.GetClient().From<Question>().Insert(question, options);
             return response.Model ?? throw new InvalidOperationException("Failed to create question");
         }
 
         public async Task<Choice> CreateChoiceAsync(Choice choice)
         {
-            var response = await _supabaseService.GetClient().From<Choice>().Insert(choice);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var response = await _supabaseService.GetClient().From<Choice>().Insert(choice, options);
             return response.Model ?? throw new InvalidOperationException("Failed to create choice");
         }
 

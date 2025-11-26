@@ -16,7 +16,8 @@ namespace OnlineQuiz.Repository
 
         public async Task<Course> CreateAsync(Course course)
         {
-            var response = await _supabaseService.GetClient().From<Course>().Insert(course);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var response = await _supabaseService.GetClient().From<Course>().Insert(course, options);
             return response.Model ?? throw new InvalidOperationException("Failed to create course");
         }
 
