@@ -17,7 +17,18 @@ namespace OnlineQuiz.Repository
         {
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var response = await _supabaseService.GetClient().From<Enrollment>().Insert(enrollment, options);
-            return response.Model ?? throw new InvalidOperationException("Failed to create enrollment");
+            var created = response.Model ?? throw new InvalidOperationException("Failed to create enrollment");
+            
+            // If EnrollmentId is not populated, fetch by unique constraint
+            if (created.EnrollmentId == 0)
+            {
+                var result = await _supabaseService.GetClient().From<Enrollment>()
+                    .Where(e => e.UserId == enrollment.UserId && e.CourseId == enrollment.CourseId)
+                    .Get();
+                return result.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<bool> ExistsAsync(int studentId, int courseId)

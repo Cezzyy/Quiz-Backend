@@ -18,7 +18,20 @@ namespace OnlineQuiz.Repository
         {
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var response = await _supabaseService.GetClient().From<Course>().Insert(course, options);
-            return response.Model ?? throw new InvalidOperationException("Failed to create course");
+            var createdCourse = response.Model ?? throw new InvalidOperationException("Failed to create course");
+            
+            // If CourseId is not populated, fetch by unique constraint (Code + Instructor)
+            if (createdCourse.CourseId == 0)
+            {
+                var result = await _supabaseService.GetClient().From<Course>()
+                    .Where(c => c.Code == course.Code && c.InstructorUserId == course.InstructorUserId)
+                    .Order("CreatedAt", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return result.Models.FirstOrDefault() ?? createdCourse;
+            }
+            
+            return createdCourse;
         }
 
         public async Task<Course?> GetByIdAsync(int courseId)
