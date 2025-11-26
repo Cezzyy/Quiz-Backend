@@ -310,6 +310,7 @@ namespace OnlineQuiz.Controllers
         [HttpPost("bulk-import")]
         [Authorize(Roles = "Admin")]
         [EnableRateLimiting("file-operations")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(BulkUserImportResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BulkUserImportResultDto>> BulkImportUsers(IFormFile file)
