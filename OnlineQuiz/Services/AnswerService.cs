@@ -3,29 +3,30 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Models;
-
 namespace OnlineQuiz.Services
 {
     public class AnswerService : IAnswerService
     {
-        private readonly IAttemptAnswerRepository _answerRepository;
         private readonly IAttemptRepository _attemptRepository;
+        private readonly IAttemptAnswerRepository _answerRepository;
+        private readonly IQuizRepository _quizRepository;
+        private readonly IUserRepository _userRepository;
 
         public AnswerService(
+            IAttemptRepository attemptRepository,
             IAttemptAnswerRepository answerRepository,
-            IAttemptRepository attemptRepository)
+            IQuizRepository quizRepository,
+            IUserRepository userRepository)
         {
-            _answerRepository = answerRepository;
             _attemptRepository = attemptRepository;
+            _answerRepository = answerRepository;
+            _quizRepository = quizRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<AnswerResponseDto> RecordAnswerAsync(CreateAnswerDto createAnswerDto, int studentId)
         {
             var attempt = await _attemptRepository.GetByIdAsync(createAnswerDto.AttemptId);
-            if (attempt == null)
-            {
-                throw new ArgumentException($"Attempt with ID {createAnswerDto.AttemptId} not found");
-            }
 
             if (attempt.UserId != studentId)
             {
@@ -62,7 +63,7 @@ namespace OnlineQuiz.Services
             };
         }
 
-        public async Task<List<AnswerResponseDto>> GetAnswersForAttemptAsync(int attemptId, int userId)
+        public async Task<AttemptWithAnswersDto> GetAnswersForAttemptAsync(int attemptId, int userId)
         {
             var attempt = await _attemptRepository.GetByIdAsync(attemptId);
             if (attempt == null)
@@ -70,28 +71,40 @@ namespace OnlineQuiz.Services
                 throw new ArgumentException($"Attempt with ID {attemptId} not found");
             }
 
+            // Fetch additional details
+            var quiz = await _quizRepository.GetByIdAsync(attempt.QuizId);
+            var student = await _userRepository.GetByIdAsync(attempt.UserId);
+
             var answers = await _answerRepository.GetByAttemptIdAsync(attemptId);
-            var response = new List<AnswerResponseDto>();
+            var answerDtos = new List<AnswerResponseDto>();
 
             foreach (var answer in answers)
             {
-                response.Add(new AnswerResponseDto
+                answerDtos.Add(new AnswerResponseDto
                 {
                     AnswerId = answer.AttemptAnswerId,
                     AttemptId = answer.AttemptId,
                     QuestionId = answer.QuestionId,
                     ChoiceId = answer.ChoiceId,
                     TextAnswer = answer.FreeText,
-                    // Use Attempt.SubmittedAt if available as a proxy for "when it was finalized", otherwise UtcNow is misleading for historical data but we have no choice without DB column.
-                    // However, returning UtcNow for historical answers is confusing.
-                    // If submitted, use SubmittedAt. If not, it's still "in progress" so maybe UtcNow is okay-ish, or better: Attempt.StartedAt?
-                    // Let's use SubmittedAt if available, else StartedAt to be stable.
                     AnsweredAt = attempt.SubmittedAt ?? attempt.StartedAt,
                     IsCorrect = attempt.SubmittedAt != null ? answer.IsCorrect : null
                 });
             }
 
-            return response;
+            return new AttemptWithAnswersDto
+            {
+                AttemptId = attempt.AttemptId,
+                UserId = attempt.UserId,
+                StudentName = student?.FullName,
+                QuizId = attempt.QuizId,
+                QuizTitle = quiz?.Title,
+                StartedAt = attempt.StartedAt,
+                SubmittedAt = attempt.SubmittedAt,
+                Score = attempt.Score,
+                TimeSpentSeconds = attempt.TimeSpentSeconds,
+                Answers = answerDtos
+            };
         }
 
         public async Task<AnswerResponseDto> UpdateAnswerAsync(int answerId, CreateAnswerDto updateAnswerDto, int studentId)

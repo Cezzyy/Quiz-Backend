@@ -69,11 +69,18 @@ namespace OnlineQuiz.DTOs
     public class EnrollmentResponseDto
     {
         public int EnrollmentId { get; set; }
+        public int StudentId { get; set; }
         public int UserId { get; set; }
         public string? StudentName { get; set; }
+        public string? Email { get; set; }
+        public string? StudentNumber { get; set; }
         public int CourseId { get; set; }
         public string? CourseName { get; set; }
+        public string? CourseCode { get; set; }
         public DateTime EnrolledAt { get; set; }
         public string? Section { get; set; }
+        public string? StudentSection { get; set; }
+        public int EnrolledBy { get; set; }
+        public string? EnrolledByName { get; set; }
     }
 }
