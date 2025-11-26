@@ -68,14 +68,40 @@ namespace OnlineQuiz.Repository
         {
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var response = await _supabaseService.GetClient().From<Question>().Insert(question, options);
-            return response.Model ?? throw new InvalidOperationException("Failed to create question");
+            var created = response.Models.FirstOrDefault() ?? throw new InvalidOperationException("Failed to create question");
+            
+            // If QuestionId is not populated, fetch it back
+            if (created.QuestionId == 0)
+            {
+                var fetchResult = await _supabaseService.GetClient().From<Question>()
+                    .Where(q => q.QuizId == question.QuizId)
+                    .Order("QuestionId", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<Choice> CreateChoiceAsync(Choice choice)
         {
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var response = await _supabaseService.GetClient().From<Choice>().Insert(choice, options);
-            return response.Model ?? throw new InvalidOperationException("Failed to create choice");
+            var created = response.Models.FirstOrDefault() ?? throw new InvalidOperationException("Failed to create choice");
+            
+            // If ChoiceId is not populated, fetch it back
+            if (created.ChoiceId == 0)
+            {
+                var fetchResult = await _supabaseService.GetClient().From<Choice>()
+                    .Where(c => c.QuestionId == choice.QuestionId)
+                    .Order("ChoiceId", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<List<Question>> GetQuestionsByQuizIdAsync(int quizId)
