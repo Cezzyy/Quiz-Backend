@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using Postgrest;
 
 namespace OnlineQuiz.Repository
 {
@@ -18,7 +19,20 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var result = await client.From<ExportImportLog>().Insert(log, options);
-            return result.Models.First();
+            var created = result.Models.First();
+            
+            // If LogId is not populated, fetch by UserId and FileName
+            if (created.LogId == 0)
+            {
+                var fetchResult = await client.From<ExportImportLog>()
+                    .Where(l => l.UserId == log.UserId && l.FileName == log.FileName)
+                    .Order("CreatedAt", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<ExportImportLog?> GetByIdAsync(int logId)

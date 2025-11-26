@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using Postgrest;
 
 namespace OnlineQuiz.Repository
 {
@@ -18,7 +19,18 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var result = await client.From<AttemptAnswer>().Insert(answer, options);
-            return result.Models.First();
+            var created = result.Models.First();
+            
+            // If AttemptAnswerId is not populated, fetch by AttemptId and QuestionId
+            if (created.AttemptAnswerId == 0)
+            {
+                var fetchResult = await client.From<AttemptAnswer>()
+                    .Where(a => a.AttemptId == answer.AttemptId && a.QuestionId == answer.QuestionId)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<AttemptAnswer?> GetByIdAsync(int answerId)

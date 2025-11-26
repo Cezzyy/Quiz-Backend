@@ -18,7 +18,16 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var result = await client.From<User>().Insert(user, options);
-            return result.Models.First();
+            var createdUser = result.Models.First();
+            
+            // If UserId is not populated (still 0), fetch it by email
+            if (createdUser.UserId == 0)
+            {
+                var fetchedUser = await GetByEmailAsync(user.Email);
+                return fetchedUser ?? throw new InvalidOperationException("Failed to retrieve created user");
+            }
+            
+            return createdUser;
         }
 
         public async Task<User?> GetByIdAsync(int userId)

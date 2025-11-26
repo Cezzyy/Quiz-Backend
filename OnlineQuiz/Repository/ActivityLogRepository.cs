@@ -20,7 +20,20 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var result = await client.From<ActivityLog>().Insert(log, options);
-            return result.Models.First();
+            var created = result.Models.First();
+            
+            // If ActivityLogId is not populated, fetch by UserId and CreatedAt
+            if (created.ActivityLogId == 0)
+            {
+                var fetchResult = await client.From<ActivityLog>()
+                    .Where(a => a.UserId == log.UserId && a.Action == log.Action)
+                    .Order("CreatedAt", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<ActivityLog?> GetByIdAsync(long activityLogId)

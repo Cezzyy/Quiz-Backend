@@ -35,24 +35,28 @@ namespace OnlineQuiz.Controllers
             {
                 var user = await _userService.CreateUserAsync(createUserDto);
 
-                // Log the CREATE activity
-                try
+                // Log the CREATE activity using authenticated user
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (currentUserId.HasValue && currentUserId.Value > 0)
                 {
-                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    try
                     {
-                        UserId = createUserDto.CreatedBy ?? 0,
-                        Action = ActivityLogConstants.Actions.CREATE,
-                        Entity = ActivityLogConstants.Entities.User,
-                        EntityId = user.UserId,
-                        Description = $"Created user {user.Email} with role {user.RoleName}",
-                        NewValues = new { user.UserId, user.Email, user.FullName, user.RoleName },
-                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
-                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
-                    });
-                }
-                catch (Exception logEx)
-                {
-                    Console.WriteLine($"Failed to log CREATE activity: {logEx.Message}");
+                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                        {
+                            UserId = currentUserId.Value,
+                            Action = ActivityLogConstants.Actions.CREATE,
+                            Entity = ActivityLogConstants.Entities.User,
+                            EntityId = user.UserId,
+                            Description = $"Created user {user.Email} with role {user.RoleName}",
+                            NewValues = new { user.UserId, user.Email, user.FullName, user.RoleName },
+                            IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                            UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                        });
+                    }
+                    catch (Exception logEx)
+                    {
+                        Console.WriteLine($"Failed to log CREATE activity: {logEx.Message}");
+                    }
                 }
 
                 return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, user);
@@ -161,25 +165,28 @@ namespace OnlineQuiz.Controllers
                 var user = await _userService.UpdateUserAsync(id, updateUserDto);
 
                 // Log the UPDATE activity
-                try
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (currentUserId.HasValue && currentUserId.Value > 0)
                 {
-                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
-                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    try
                     {
-                        UserId = currentUserId,
-                        Action = ActivityLogConstants.Actions.UPDATE,
-                        Entity = ActivityLogConstants.Entities.User,
-                        EntityId = id,
-                        Description = $"Updated user {user.Email}",
-                        OldValues = oldUser != null ? new { oldUser.Email, oldUser.FullName, oldUser.Status } : null,
-                        NewValues = new { user.Email, user.FullName, user.Status },
-                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
-                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
-                    });
-                }
-                catch (Exception logEx)
-                {
-                    Console.WriteLine($"Failed to log UPDATE activity: {logEx.Message}");
+                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                        {
+                            UserId = currentUserId.Value,
+                            Action = ActivityLogConstants.Actions.UPDATE,
+                            Entity = ActivityLogConstants.Entities.User,
+                            EntityId = id,
+                            Description = $"Updated user {user.Email}",
+                            OldValues = oldUser != null ? new { oldUser.Email, oldUser.FullName, oldUser.Status } : null,
+                            NewValues = new { user.Email, user.FullName, user.Status },
+                            IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                            UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                        });
+                    }
+                    catch (Exception logEx)
+                    {
+                        Console.WriteLine($"Failed to log UPDATE activity: {logEx.Message}");
+                    }
                 }
 
                 return Ok(user);
@@ -214,12 +221,14 @@ namespace OnlineQuiz.Controllers
                 // Log the DELETE activity
                 if (user != null)
                 {
-                    try
+                    var currentUserId = JwtTokenGenerator.GetUserId(User);
+                    if (currentUserId.HasValue && currentUserId.Value > 0)
                     {
-                        var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
-                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                        try
                         {
-                            UserId = currentUserId,
+                            await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                            {
+                                UserId = currentUserId.Value,
                             Action = ActivityLogConstants.Actions.DELETE,
                             Entity = ActivityLogConstants.Entities.User,
                             EntityId = id,
@@ -229,9 +238,10 @@ namespace OnlineQuiz.Controllers
                             UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
                         });
                     }
-                    catch (Exception logEx)
-                    {
-                        Console.WriteLine($"Failed to log DELETE activity: {logEx.Message}");
+                        catch (Exception logEx)
+                        {
+                            Console.WriteLine($"Failed to log DELETE activity: {logEx.Message}");
+                        }
                     }
                 }
 
@@ -262,23 +272,26 @@ namespace OnlineQuiz.Controllers
                 var deletedCount = await _userService.BulkDeleteAsync(dto.UserIds);
                 
                 // Log the BULK_DELETE activity
-                try
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (currentUserId.HasValue && currentUserId.Value > 0)
                 {
-                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
-                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    try
                     {
-                        UserId = currentUserId,
-                        Action = ActivityLogConstants.Actions.DELETE,
-                        Entity = ActivityLogConstants.Entities.User,
-                        Description = $"Bulk deleted {deletedCount} users",
-                        NewValues = new { UserIds = dto.UserIds, DeletedCount = deletedCount },
-                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
-                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
-                    });
-                }
-                catch (Exception logEx)
-                {
-                    Console.WriteLine($"Failed to log BULK_DELETE activity: {logEx.Message}");
+                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                        {
+                            UserId = currentUserId.Value,
+                            Action = ActivityLogConstants.Actions.DELETE,
+                            Entity = ActivityLogConstants.Entities.User,
+                            Description = $"Bulk deleted {deletedCount} users",
+                            NewValues = new { UserIds = dto.UserIds, DeletedCount = deletedCount },
+                            IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                            UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                        });
+                    }
+                    catch (Exception logEx)
+                    {
+                        Console.WriteLine($"Failed to log BULK_DELETE activity: {logEx.Message}");
+                    }
                 }
 
                 return NoContent();
@@ -318,18 +331,22 @@ namespace OnlineQuiz.Controllers
                 }
 
                 // Get current user ID
-                var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
 
                 // Process the file
                 using var stream = file.OpenReadStream();
-                var result = await _userService.BulkCreateUsersFromExcelAsync(stream, file.FileName, currentUserId);
+                var result = await _userService.BulkCreateUsersFromExcelAsync(stream, file.FileName, currentUserId.Value);
 
                 // Log the BULK_IMPORT activity
                 try
                 {
                     await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        UserId = currentUserId,
+                        UserId = currentUserId.Value,
                         Action = ActivityLogConstants.Actions.IMPORT,
                         Entity = ActivityLogConstants.Entities.User,
                         EntityId = result.LogId,
@@ -376,23 +393,26 @@ namespace OnlineQuiz.Controllers
                 await _userService.ResetPasswordAsync(id, resetPasswordDto.NewPassword);
 
                 // Log activity
-                try
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (currentUserId.HasValue && currentUserId.Value > 0)
                 {
-                    var currentUserId = JwtTokenGenerator.GetUserId(User) ?? 0;
-                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    try
                     {
-                        UserId = currentUserId,
-                        Action = ActivityLogConstants.Actions.UPDATE,
-                        Entity = ActivityLogConstants.Entities.User,
-                        EntityId = id,
-                        Description = $"Reset password for user {id}",
-                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
-                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
-                    });
-                }
-                catch (Exception logEx)
-                {
-                    Console.WriteLine($"Failed to log password reset: {logEx.Message}");
+                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                        {
+                            UserId = currentUserId.Value,
+                            Action = ActivityLogConstants.Actions.UPDATE,
+                            Entity = ActivityLogConstants.Entities.User,
+                            EntityId = id,
+                            Description = $"Reset password for user {id}",
+                            IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                            UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                        });
+                    }
+                    catch (Exception logEx)
+                    {
+                        Console.WriteLine($"Failed to log password reset: {logEx.Message}");
+                    }
                 }
 
                 return Ok(new { message = "Password reset successfully" });

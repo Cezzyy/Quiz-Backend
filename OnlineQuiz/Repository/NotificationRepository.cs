@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using Postgrest;
 
 namespace OnlineQuiz.Repository
 {
@@ -18,7 +19,20 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var result = await client.From<Notification>().Insert(notification, options);
-            return result.Models.First();
+            var created = result.Models.First();
+            
+            // If NotificationId is not populated, fetch by UserId and CreatedAt
+            if (created.NotificationId == 0)
+            {
+                var fetchResult = await client.From<Notification>()
+                    .Where(n => n.UserId == notification.UserId && n.Title == notification.Title)
+                    .Order("CreatedAt", Constants.Ordering.Descending)
+                    .Limit(1)
+                    .Get();
+                return fetchResult.Models.FirstOrDefault() ?? created;
+            }
+            
+            return created;
         }
 
         public async Task<Notification?> GetByIdAsync(int notificationId)
