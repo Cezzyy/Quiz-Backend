@@ -16,7 +16,8 @@ namespace OnlineQuiz.Repository
         public async Task<Attempt> CreateAsync(Attempt attempt)
         {
             var client = _supabaseService.GetClient();
-            var result = await client.From<Attempt>().Insert(attempt);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var result = await client.From<Attempt>().Insert(attempt, options);
             return result.Models.First();
         }
 

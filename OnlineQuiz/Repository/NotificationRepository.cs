@@ -16,7 +16,8 @@ namespace OnlineQuiz.Repository
         public async Task<Notification> CreateAsync(Notification notification)
         {
             var client = _supabaseService.GetClient();
-            var result = await client.From<Notification>().Insert(notification);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var result = await client.From<Notification>().Insert(notification, options);
             return result.Models.First();
         }
 
@@ -71,7 +72,8 @@ namespace OnlineQuiz.Repository
                 return new List<Notification>();
 
             var client = _supabaseService.GetClient();
-            var result = await client.From<Notification>().Insert(notifications);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var result = await client.From<Notification>().Insert(notifications, options);
             return result.Models;
         }
 

@@ -15,7 +15,8 @@ namespace OnlineQuiz.Repository
 
         public async Task<Enrollment> CreateAsync(Enrollment enrollment)
         {
-            var response = await _supabaseService.GetClient().From<Enrollment>().Insert(enrollment);
+            var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
+            var response = await _supabaseService.GetClient().From<Enrollment>().Insert(enrollment, options);
             return response.Model ?? throw new InvalidOperationException("Failed to create enrollment");
         }
 
