@@ -14,6 +14,8 @@ namespace OnlineQuiz.DTOs
 
         public int? TimeLimitMinutes { get; set; }
 
+        public bool IsPublished { get; set; } = false;
+
         [Required]
         public int CreatedBy { get; set; }
         

@@ -54,7 +54,7 @@ namespace OnlineQuiz.Services
                 DueAt = createQuizDto.DueAt,
                 TimeLimitMinutes = createQuizDto.TimeLimitMinutes,
                 CreatedBy = createQuizDto.CreatedBy,
-                IsPublished = false, // Default to draft
+                IsPublished = createQuizDto.IsPublished,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
