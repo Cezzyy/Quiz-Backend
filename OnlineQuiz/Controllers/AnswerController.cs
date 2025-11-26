@@ -75,17 +75,17 @@ namespace OnlineQuiz.Controllers
         /// Get all answers for an attempt
         /// </summary>
         [HttpGet("attempt/{attemptId}")]
-        [ProducesResponseType(typeof(AttemptWithAnswersDto), StatusCodes.Status200OK)]
-        public async Task<ActionResult<AttemptWithAnswersDto>> GetAnswersForAttempt(int attemptId, [FromQuery] int userId)
+        [ProducesResponseType(typeof(List<AnswerResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<AnswerResponseDto>>> GetAnswersForAttempt(int attemptId, [FromQuery] int userId)
         {
             try
             {
-                var attemptWithAnswers = await _answerService.GetAnswersForAttemptAsync(attemptId, userId);
-                if (attemptWithAnswers == null)
+                var answers = await _answerService.GetAnswersForAttemptAsync(attemptId, userId);
+                if (!answers.Any())
                 {
-                    return NotFound(new { error = "Attempt not found" });
+                    return Ok(new List<AnswerResponseDto>());
                 }
-                return Ok(attemptWithAnswers);
+                return Ok(answers);
             }
             catch (Exception ex)
             {

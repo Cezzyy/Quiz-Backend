@@ -31,11 +31,6 @@ namespace OnlineQuiz.DTOs
         public int? TimeSpentSeconds { get; set; }
     }
 
-    public class AttemptWithAnswersDto : AttemptResponseDto
-    {
-        public List<AnswerResponseDto> Answers { get; set; } = new();
-    }
-
     public class CreateAnswerDto
     {
         [Required]
