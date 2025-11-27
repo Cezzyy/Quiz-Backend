@@ -93,6 +93,7 @@ namespace OnlineQuiz.Services
                 
                 // Fetch counts
                 var enrollmentCounts = await _enrollmentRepository.CountByCourseIdsAsync(courseIds);
+                var sectionCounts = await _enrollmentRepository.CountSectionsByCourseIdsAsync(courseIds);
                 var quizzes = await _quizRepository.GetByCourseIdsAsync(courseIds);
                 var quizCounts = quizzes.GroupBy(q => q.CourseId).ToDictionary(g => g.Key, g => g.Count());
 
@@ -100,9 +101,19 @@ namespace OnlineQuiz.Services
                 {
                     dto.InstructorName = instructorUser?.FullName;
                     
+                    // Initialize counts to 0
+                    dto.EnrollmentCount = 0;
+                    dto.QuizCount = 0;
+                    dto.SectionCount = 0;
+                    
                     if (enrollmentCounts.TryGetValue(dto.CourseId, out var eCount))
                     {
                         dto.EnrollmentCount = eCount;
+                    }
+
+                    if (sectionCounts.TryGetValue(dto.CourseId, out var sCount))
+                    {
+                        dto.SectionCount = sCount;
                     }
                     
                     if (quizCounts.TryGetValue(dto.CourseId, out var qCount))
@@ -130,12 +141,18 @@ namespace OnlineQuiz.Services
 
             // Fetch counts
             var enrollmentCounts = await _enrollmentRepository.CountByCourseIdsAsync(courseIds);
+            var sectionCounts = await _enrollmentRepository.CountSectionsByCourseIdsAsync(courseIds);
             var quizzes = await _quizRepository.GetByCourseIdsAsync(courseIds);
             var quizCounts = quizzes.GroupBy(q => q.CourseId).ToDictionary(g => g.Key, g => g.Count());
 
             // Populate instructor names and counts
             foreach (var dto in response)
             {
+                // Initialize counts to 0
+                dto.EnrollmentCount = 0;
+                dto.QuizCount = 0;
+                dto.SectionCount = 0;
+                
                 if (instructorMap.TryGetValue(dto.InstructorId, out var name))
                 {
                     dto.InstructorName = name;
@@ -144,6 +161,11 @@ namespace OnlineQuiz.Services
                 if (enrollmentCounts.TryGetValue(dto.CourseId, out var eCount))
                 {
                     dto.EnrollmentCount = eCount;
+                }
+
+                if (sectionCounts.TryGetValue(dto.CourseId, out var sCount))
+                {
+                    dto.SectionCount = sCount;
                 }
                 
                 if (quizCounts.TryGetValue(dto.CourseId, out var qCount))
@@ -400,6 +422,20 @@ namespace OnlineQuiz.Services
                 return false;
             }
 
+            // Check if course has any quizzes
+            var quizCount = await _quizRepository.CountByCourseAsync(courseId);
+            if (quizCount > 0)
+            {
+                throw new InvalidOperationException($"Cannot delete course. It has {quizCount} quiz(zes) associated with it. Please delete all quizzes first.");
+            }
+
+            // Check if course has any enrollments
+            var enrollmentCount = await _enrollmentRepository.CountByCourseIdAsync(courseId);
+            if (enrollmentCount > 0)
+            {
+                throw new InvalidOperationException($"Cannot delete course. It has {enrollmentCount} student(s) enrolled. Please unenroll all students first.");
+            }
+
             return await _courseRepository.DeleteAsync(courseId);
         }
 
@@ -418,12 +454,18 @@ namespace OnlineQuiz.Services
 
             // Fetch counts
             var enrollmentCounts = await _enrollmentRepository.CountByCourseIdsAsync(courseIds);
+            var sectionCounts = await _enrollmentRepository.CountSectionsByCourseIdsAsync(courseIds);
             var quizzes = await _quizRepository.GetByCourseIdsAsync(courseIds);
             var quizCounts = quizzes.GroupBy(q => q.CourseId).ToDictionary(g => g.Key, g => g.Count());
 
             // Populate instructor names and counts
             foreach (var dto in response)
             {
+                // Initialize counts to 0
+                dto.EnrollmentCount = 0;
+                dto.QuizCount = 0;
+                dto.SectionCount = 0;
+                
                 if (instructorMap.TryGetValue(dto.InstructorId, out var name))
                 {
                     dto.InstructorName = name;
@@ -432,6 +474,11 @@ namespace OnlineQuiz.Services
                 if (enrollmentCounts.TryGetValue(dto.CourseId, out var eCount))
                 {
                     dto.EnrollmentCount = eCount;
+                }
+
+                if (sectionCounts.TryGetValue(dto.CourseId, out var sCount))
+                {
+                    dto.SectionCount = sCount;
                 }
                 
                 if (quizCounts.TryGetValue(dto.CourseId, out var qCount))
