@@ -52,6 +52,7 @@ namespace OnlineQuiz.DTOs
         public DateTime CreatedAt { get; set; }
         public int EnrollmentCount { get; set; }
         public int QuizCount { get; set; }
+        public int SectionCount { get; set; }
     }
 
     public class EnrollStudentDto
