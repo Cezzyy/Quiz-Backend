@@ -87,11 +87,29 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<BulkUserImportResultDto> BulkCreateUsersFromExcelAsync(Stream fileStream, string fileName, int createdByUserId) => throw new NotImplementedException();
     }
 
+    internal class FakeActivityLogServiceForNotifications : IActivityLogService
+    {
+        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
+            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, EntityId = dto.EntityId, CreatedAt = DateTime.UtcNow });
+
+        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter)
+            => Task.FromResult(new List<ActivityLogDto>());
+
+        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null)
+            => Task.FromResult(new List<ActivityLogDto>());
+
+        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30)
+            => Task.FromResult(new ActivityLogStatisticsDto());
+
+        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId)
+            => Task.FromResult<ActivityLogDto?>(null);
+    }
+
     public class NotificationControllerTests
     {
         private static NotificationController CreateController(FakeNotificationService svc, ClaimsIdentity identity)
         {
-            var controller = new NotificationController(svc, new FakeUserServiceMinimal());
+            var controller = new NotificationController(svc, new FakeUserServiceMinimal(), new FakeActivityLogServiceForNotifications());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
