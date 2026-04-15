@@ -11,5 +11,14 @@ namespace OnlineQuiz.IServices
         Task<QuizResponseDto> UpdateQuizAsync(int quizId, UpdateQuizDto updateQuizDto, int userId);
         Task<bool> DeleteQuizAsync(int quizId, int userId);
         Task<int> BulkDeleteQuizzesAsync(List<int> quizIds, int userId);
+
+        // Archive operations
+        Task<QuizResponseDto> ArchiveQuizAsync(int quizId, int userId, int archivedBy);
+        Task<QuizResponseDto> UnarchiveQuizAsync(int quizId, int userId);
+        Task<BulkArchiveResponseDto> BulkArchiveQuizzesAsync(List<int> quizIds, int userId, int archivedBy);
+        Task<BulkArchiveResponseDto> BulkUnarchiveQuizzesAsync(List<int> quizIds, int userId);
+        Task<List<QuizResponseDto>> GetArchivedQuizzesAsync(int courseId, int userId);
+        Task<PagedResult<QuizResponseDto>> GetArchivedQuizzesPagedAsync(int courseId, int userId, PaginationParams paginationParams);
+        Task<ArchiveStatisticsDto> GetQuizArchiveStatisticsAsync(int? courseId = null);
     }
 }

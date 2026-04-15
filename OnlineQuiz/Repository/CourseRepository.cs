@@ -44,7 +44,9 @@ namespace OnlineQuiz.Repository
 
         public async Task<List<Course>> GetAllAsync()
         {
-            var response = await _supabaseService.GetClient().From<Course>().Get();
+            var response = await _supabaseService.GetClient().From<Course>()
+                .Where(c => c.Status != "Archived")
+                .Get();
             return response.Models;
         }
 
@@ -76,7 +78,7 @@ namespace OnlineQuiz.Repository
         public async Task<List<Course>> GetByInstructorIdAsync(int instructorId)
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.InstructorUserId == instructorId)
+                .Where(c => c.InstructorUserId == instructorId && c.Status != "Archived")
                 .Get();
             return response.Models;
         }
@@ -93,14 +95,16 @@ namespace OnlineQuiz.Repository
 
         public async Task<int> CountAsync()
         {
-            var response = await _supabaseService.GetClient().From<Course>().Count(Postgrest.Constants.CountType.Exact);
+            var response = await _supabaseService.GetClient().From<Course>()
+                .Where(c => c.Status != "Archived")
+                .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
 
         public async Task<int> CountByInstructorAsync(int instructorId)
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.InstructorUserId == instructorId)
+                .Where(c => c.InstructorUserId == instructorId && c.Status != "Archived")
                 .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
@@ -113,6 +117,102 @@ namespace OnlineQuiz.Repository
                 .Filter("CourseId", Postgrest.Constants.Operator.In, courseIds)
                 .Delete();
             return courseIds.Count;
+        }
+
+        // Archive operations
+        public async Task<Course?> ArchiveAsync(int courseId, int archivedBy)
+        {
+            var course = await GetByIdAsync(courseId);
+            if (course == null) return null;
+
+            course.Status = "Archived";
+            course.ArchivedAt = DateTime.UtcNow;
+            course.ArchivedBy = archivedBy;
+            course.UpdatedAt = DateTime.UtcNow;
+
+            return await UpdateAsync(course);
+        }
+
+        public async Task<Course?> UnarchiveAsync(int courseId)
+        {
+            var course = await GetByIdAsync(courseId);
+            if (course == null) return null;
+
+            course.Status = "Active";
+            course.ArchivedAt = null;
+            course.ArchivedBy = null;
+            course.UpdatedAt = DateTime.UtcNow;
+
+            return await UpdateAsync(course);
+        }
+
+        public async Task<int> BulkArchiveAsync(List<int> courseIds, int archivedBy)
+        {
+            if (!courseIds.Any()) return 0;
+
+            var archiveCount = 0;
+            foreach (var courseId in courseIds)
+            {
+                var course = await GetByIdAsync(courseId);
+                if (course != null)
+                {
+                    course.Status = "Archived";
+                    course.ArchivedAt = DateTime.UtcNow;
+                    course.ArchivedBy = archivedBy;
+                    course.UpdatedAt = DateTime.UtcNow;
+
+                    await UpdateAsync(course);
+                    archiveCount++;
+                }
+            }
+
+            return archiveCount;
+        }
+
+        public async Task<int> BulkUnarchiveAsync(List<int> courseIds)
+        {
+            if (!courseIds.Any()) return 0;
+
+            var unarchiveCount = 0;
+            foreach (var courseId in courseIds)
+            {
+                var course = await GetByIdAsync(courseId);
+                if (course != null)
+                {
+                    course.Status = "Active";
+                    course.ArchivedAt = null;
+                    course.ArchivedBy = null;
+                    course.UpdatedAt = DateTime.UtcNow;
+
+                    await UpdateAsync(course);
+                    unarchiveCount++;
+                }
+            }
+
+            return unarchiveCount;
+        }
+
+        public async Task<List<Course>> GetArchivedAsync()
+        {
+            var response = await _supabaseService.GetClient().From<Course>()
+                .Where(c => c.Status == "Archived")
+                .Order("ArchivedAt", Constants.Ordering.Descending)
+                .Get();
+            return response.Models;
+        }
+
+        public async Task<List<Course>> GetAllIncludingArchivedAsync()
+        {
+            var response = await _supabaseService.GetClient().From<Course>().Get();
+            return response.Models;
+        }
+
+        public async Task<int> CountArchivedAsync()
+        {
+            var response = await _supabaseService.GetClient().From<Course>()
+                .Where(c => c.Status == "Archived")
+                .Count(Postgrest.Constants.CountType.Exact);
+            return response;
         }
     }
 }

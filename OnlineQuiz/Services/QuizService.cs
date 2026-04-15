@@ -430,6 +430,212 @@ namespace OnlineQuiz.Services
             return await _quizRepository.BulkDeleteAsync(quizIds);
         }
 
+        // Archive operations
+        public async Task<QuizResponseDto> ArchiveQuizAsync(int quizId, int userId, int archivedBy)
+        {
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                throw new InvalidOperationException($"Quiz with ID {quizId} not found");
+            }
+
+            // Verify user has permission (instructor or admin)
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {quiz.CourseId} not found");
+            }
+
+            // Check if user is the instructor or admin (admin check should be done at controller level)
+            if (course.InstructorUserId != userId)
+            {
+                throw new UnauthorizedAccessException("Only the course instructor can archive quizzes");
+            }
+
+            if (quiz.Status == EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"Quiz with ID {quizId} is already archived");
+            }
+
+            var archivedQuiz = await _quizRepository.ArchiveAsync(quizId, archivedBy);
+            if (archivedQuiz == null)
+            {
+                throw new InvalidOperationException($"Failed to archive quiz with ID {quizId}");
+            }
+
+            return await GetQuizByIdAsync(quizId) ?? throw new InvalidOperationException("Failed to retrieve archived quiz");
+        }
+
+        public async Task<QuizResponseDto> UnarchiveQuizAsync(int quizId, int userId)
+        {
+            var quiz = await _quizRepository.GetByIdAsync(quizId);
+            if (quiz == null)
+            {
+                throw new InvalidOperationException($"Quiz with ID {quizId} not found");
+            }
+
+            // Verify user has permission (instructor or admin)
+            var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {quiz.CourseId} not found");
+            }
+
+            // Check if user is the instructor or admin (admin check should be done at controller level)
+            if (course.InstructorUserId != userId)
+            {
+                throw new UnauthorizedAccessException("Only the course instructor can unarchive quizzes");
+            }
+
+            if (quiz.Status != EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"Quiz with ID {quizId} is not archived");
+            }
+
+            var unarchivedQuiz = await _quizRepository.UnarchiveAsync(quizId);
+            if (unarchivedQuiz == null)
+            {
+                throw new InvalidOperationException($"Failed to unarchive quiz with ID {quizId}");
+            }
+
+            return await GetQuizByIdAsync(quizId) ?? throw new InvalidOperationException("Failed to retrieve unarchived quiz");
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkArchiveQuizzesAsync(List<int> quizIds, int userId, int archivedBy)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = quizIds.Count
+            };
+
+            foreach (var quizId in quizIds)
+            {
+                try
+                {
+                    await ArchiveQuizAsync(quizId, userId, archivedBy);
+                    response.SuccessfulIds.Add(quizId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = quizId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Archived {response.SuccessCount} of {response.TotalRequested} quizzes";
+            return response;
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkUnarchiveQuizzesAsync(List<int> quizIds, int userId)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = quizIds.Count
+            };
+
+            foreach (var quizId in quizIds)
+            {
+                try
+                {
+                    await UnarchiveQuizAsync(quizId, userId);
+                    response.SuccessfulIds.Add(quizId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = quizId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Unarchived {response.SuccessCount} of {response.TotalRequested} quizzes";
+            return response;
+        }
+
+        public async Task<List<QuizResponseDto>> GetArchivedQuizzesAsync(int courseId, int userId)
+        {
+            // Verify user has access to the course
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} not found");
+            }
+
+            var archivedQuizzes = await _quizRepository.GetArchivedByCourseIdAsync(courseId);
+            var quizResponseDtos = new List<QuizResponseDto>();
+
+            foreach (var quiz in archivedQuizzes)
+            {
+                var quizDto = await GetQuizByIdAsync(quiz.QuizId);
+                if (quizDto != null)
+                {
+                    quizResponseDtos.Add(quizDto);
+                }
+            }
+
+            return quizResponseDtos;
+        }
+
+        public async Task<PagedResult<QuizResponseDto>> GetArchivedQuizzesPagedAsync(int courseId, int userId, PaginationParams paginationParams)
+        {
+            var allArchivedQuizzes = await GetArchivedQuizzesAsync(courseId, userId);
+            
+            var pagedQuizzes = allArchivedQuizzes
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<QuizResponseDto>
+            {
+                Items = pagedQuizzes,
+                TotalCount = allArchivedQuizzes.Count,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<ArchiveStatisticsDto> GetQuizArchiveStatisticsAsync(int? courseId = null)
+        {
+            List<Quiz> allQuizzes;
+            
+            if (courseId.HasValue)
+            {
+                // Get all quizzes for specific course (including archived)
+                var activeQuizzes = await _quizRepository.GetByCourseIdAsync(courseId.Value);
+                var archivedQuizzes = await _quizRepository.GetArchivedByCourseIdAsync(courseId.Value);
+                allQuizzes = activeQuizzes.Concat(archivedQuizzes).ToList();
+            }
+            else
+            {
+                // Get all quizzes system-wide
+                allQuizzes = await _quizRepository.GetAllIncludingArchivedAsync();
+            }
+            
+            var activeCount = allQuizzes.Count(q => q.Status == EntityStatusConstants.Active);
+            var archivedCount = allQuizzes.Count(q => q.Status == EntityStatusConstants.Archived);
+            var inactiveCount = allQuizzes.Count(q => q.Status == EntityStatusConstants.Inactive);
+            var totalCount = allQuizzes.Count;
+
+            return new ArchiveStatisticsDto
+            {
+                EntityType = courseId.HasValue ? $"Quiz (Course {courseId})" : "Quiz",
+                ActiveCount = activeCount,
+                ArchivedCount = archivedCount,
+                InactiveCount = inactiveCount,
+                TotalCount = totalCount,
+                ArchivePercentage = totalCount > 0 ? (decimal)archivedCount / totalCount * 100 : 0
+            };
+        }
+
         private string NormalizeQuestionType(string type)
         {
             if (string.IsNullOrWhiteSpace(type)) return QuestionTypeConstants.Single;

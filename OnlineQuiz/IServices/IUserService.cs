@@ -13,5 +13,14 @@ namespace OnlineQuiz.IServices
         Task<int> BulkDeleteAsync(List<int> userIds);
         Task ResetPasswordAsync(int userId, string newPassword);
         Task<BulkUserImportResultDto> BulkCreateUsersFromExcelAsync(Stream fileStream, string fileName, int createdByUserId);
+
+        // Archive operations
+        Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy);
+        Task<UserResponseDto> UnarchiveUserAsync(int userId);
+        Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy);
+        Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds);
+        Task<List<UserResponseDto>> GetArchivedUsersAsync();
+        Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams);
+        Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync();
     }
 }

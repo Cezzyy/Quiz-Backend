@@ -3,6 +3,7 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Models;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Services
 {
@@ -598,6 +599,166 @@ namespace OnlineQuiz.Services
             }
 
             return 0;
+        }
+
+        // Archive operations
+        public async Task<CourseResponseDto> ArchiveCourseAsync(int courseId, int archivedBy)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} not found");
+            }
+
+            if (course.Status == EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} is already archived");
+            }
+
+            var archivedCourse = await _courseRepository.ArchiveAsync(courseId, archivedBy);
+            if (archivedCourse == null)
+            {
+                throw new InvalidOperationException($"Failed to archive course with ID {courseId}");
+            }
+
+            return await GetCourseByIdAsync(courseId) ?? throw new InvalidOperationException("Failed to retrieve archived course");
+        }
+
+        public async Task<CourseResponseDto> UnarchiveCourseAsync(int courseId)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} not found");
+            }
+
+            if (course.Status != EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} is not archived");
+            }
+
+            var unarchivedCourse = await _courseRepository.UnarchiveAsync(courseId);
+            if (unarchivedCourse == null)
+            {
+                throw new InvalidOperationException($"Failed to unarchive course with ID {courseId}");
+            }
+
+            return await GetCourseByIdAsync(courseId) ?? throw new InvalidOperationException("Failed to retrieve unarchived course");
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkArchiveCoursesAsync(List<int> courseIds, int archivedBy)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = courseIds.Count
+            };
+
+            foreach (var courseId in courseIds)
+            {
+                try
+                {
+                    await ArchiveCourseAsync(courseId, archivedBy);
+                    response.SuccessfulIds.Add(courseId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = courseId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Archived {response.SuccessCount} of {response.TotalRequested} courses";
+            return response;
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkUnarchiveCoursesAsync(List<int> courseIds)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = courseIds.Count
+            };
+
+            foreach (var courseId in courseIds)
+            {
+                try
+                {
+                    await UnarchiveCourseAsync(courseId);
+                    response.SuccessfulIds.Add(courseId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = courseId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Unarchived {response.SuccessCount} of {response.TotalRequested} courses";
+            return response;
+        }
+
+        public async Task<List<CourseResponseDto>> GetArchivedCoursesAsync()
+        {
+            var archivedCourses = await _courseRepository.GetArchivedAsync();
+            var courseResponseDtos = new List<CourseResponseDto>();
+
+            foreach (var course in archivedCourses)
+            {
+                var courseDto = await GetCourseByIdAsync(course.CourseId);
+                if (courseDto != null)
+                {
+                    courseResponseDtos.Add(courseDto);
+                }
+            }
+
+            return courseResponseDtos;
+        }
+
+        public async Task<PagedResult<CourseResponseDto>> GetArchivedCoursesPagedAsync(PaginationParams paginationParams)
+        {
+            var allArchivedCourses = await GetArchivedCoursesAsync();
+            
+            var pagedCourses = allArchivedCourses
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<CourseResponseDto>
+            {
+                Items = pagedCourses,
+                TotalCount = allArchivedCourses.Count,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<ArchiveStatisticsDto> GetCourseArchiveStatisticsAsync()
+        {
+            var allCourses = await _courseRepository.GetAllIncludingArchivedAsync();
+            
+            var activeCount = allCourses.Count(c => c.Status == EntityStatusConstants.Active);
+            var archivedCount = allCourses.Count(c => c.Status == EntityStatusConstants.Archived);
+            var inactiveCount = allCourses.Count(c => c.Status == EntityStatusConstants.Inactive);
+            var totalCount = allCourses.Count;
+
+            return new ArchiveStatisticsDto
+            {
+                EntityType = "Course",
+                ActiveCount = activeCount,
+                ArchivedCount = archivedCount,
+                InactiveCount = inactiveCount,
+                TotalCount = totalCount,
+                ArchivePercentage = totalCount > 0 ? (decimal)archivedCount / totalCount * 100 : 0
+            };
         }
     }
 }

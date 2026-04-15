@@ -47,5 +47,11 @@ namespace OnlineQuiz.Models
         [Required]
         [Column("CreatedBy")]
         public int CreatedBy { get; set; }
+
+        [Column("ArchivedAt")]
+        public DateTime? ArchivedAt { get; set; }
+
+        [Column("ArchivedBy")]
+        public int? ArchivedBy { get; set; }
     }
 }

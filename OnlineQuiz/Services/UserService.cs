@@ -724,5 +724,165 @@ namespace OnlineQuiz.Services
                 _ => "Unknown"
             };
         }
+
+        // Archive operations
+        public async Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User with ID {userId} not found");
+            }
+
+            if (user.Status == EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"User with ID {userId} is already archived");
+            }
+
+            var archivedUser = await _userRepository.ArchiveAsync(userId, archivedBy);
+            if (archivedUser == null)
+            {
+                throw new InvalidOperationException($"Failed to archive user with ID {userId}");
+            }
+
+            return await GetUserByIdAsync(userId) ?? throw new InvalidOperationException("Failed to retrieve archived user");
+        }
+
+        public async Task<UserResponseDto> UnarchiveUserAsync(int userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User with ID {userId} not found");
+            }
+
+            if (user.Status != EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"User with ID {userId} is not archived");
+            }
+
+            var unarchivedUser = await _userRepository.UnarchiveAsync(userId);
+            if (unarchivedUser == null)
+            {
+                throw new InvalidOperationException($"Failed to unarchive user with ID {userId}");
+            }
+
+            return await GetUserByIdAsync(userId) ?? throw new InvalidOperationException("Failed to retrieve unarchived user");
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = userIds.Count
+            };
+
+            foreach (var userId in userIds)
+            {
+                try
+                {
+                    await ArchiveUserAsync(userId, archivedBy);
+                    response.SuccessfulIds.Add(userId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = userId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Archived {response.SuccessCount} of {response.TotalRequested} users";
+            return response;
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = userIds.Count
+            };
+
+            foreach (var userId in userIds)
+            {
+                try
+                {
+                    await UnarchiveUserAsync(userId);
+                    response.SuccessfulIds.Add(userId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = userId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Unarchived {response.SuccessCount} of {response.TotalRequested} users";
+            return response;
+        }
+
+        public async Task<List<UserResponseDto>> GetArchivedUsersAsync()
+        {
+            var archivedUsers = await _userRepository.GetArchivedAsync();
+            var userResponseDtos = new List<UserResponseDto>();
+
+            foreach (var user in archivedUsers)
+            {
+                var userDto = await GetUserByIdAsync(user.UserId);
+                if (userDto != null)
+                {
+                    userResponseDtos.Add(userDto);
+                }
+            }
+
+            return userResponseDtos;
+        }
+
+        public async Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams)
+        {
+            var allArchivedUsers = await GetArchivedUsersAsync();
+            
+            var pagedUsers = allArchivedUsers
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            return new PagedResult<UserResponseDto>
+            {
+                Items = pagedUsers,
+                TotalCount = allArchivedUsers.Count,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync()
+        {
+            var allUsers = await _userRepository.GetAllIncludingArchivedAsync();
+            
+            var activeCount = allUsers.Count(u => u.Status == EntityStatusConstants.Active);
+            var archivedCount = allUsers.Count(u => u.Status == EntityStatusConstants.Archived);
+            var inactiveCount = allUsers.Count(u => u.Status == EntityStatusConstants.Inactive);
+            var totalCount = allUsers.Count;
+
+            return new ArchiveStatisticsDto
+            {
+                EntityType = "User",
+                ActiveCount = activeCount,
+                ArchivedCount = archivedCount,
+                InactiveCount = inactiveCount,
+                TotalCount = totalCount,
+                ArchivePercentage = totalCount > 0 ? (decimal)archivedCount / totalCount * 100 : 0
+            };
+        }
     }
 }

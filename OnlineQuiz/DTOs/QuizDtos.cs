@@ -63,8 +63,14 @@ namespace OnlineQuiz.DTOs
         public DateTime? DueAt { get; set; }
         public int? TimeLimitMinutes { get; set; }
         public bool IsPublished { get; set; }
+        public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public List<QuestionResponseDto> Questions { get; set; } = new();
+
+        // Archive information
+        public DateTime? ArchivedAt { get; set; }
+        public int? ArchivedBy { get; set; }
+        public string? ArchivedByName { get; set; }
     }
 
     public class CreateQuestionDto

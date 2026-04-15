@@ -29,6 +29,11 @@ namespace OnlineQuiz.Models
         [Column("Is_Published")]
         public bool IsPublished { get; set; } = false;
 
+        [Required]
+        [MaxLength(50)]
+        [Column("Status")]
+        public string Status { get; set; } = "Active";
+
         [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -38,5 +43,11 @@ namespace OnlineQuiz.Models
         [Required]
         [Column("CreatedBy")]
         public int CreatedBy { get; set; }
+
+        [Column("ArchivedAt")]
+        public DateTime? ArchivedAt { get; set; }
+
+        [Column("ArchivedBy")]
+        public int? ArchivedBy { get; set; }
     }
 }
