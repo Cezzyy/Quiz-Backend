@@ -41,6 +41,18 @@ var supabaseService = new SupabaseService(supabaseUrl, supabaseKey);
 await supabaseService.InitializeAsync();
 builder.Services.AddSingleton(supabaseService);
 
+// Configure Biometric ESP32
+var esp32ConnectionString = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_CONNECTION_STRING") 
+    ?? throw new InvalidOperationException("BIOMETRIC_ESP32_CONNECTION_STRING is not set in environment variables");
+var esp32Timeout = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_TIMEOUT") 
+    ?? throw new InvalidOperationException("BIOMETRIC_ESP32_TIMEOUT is not set in environment variables");
+var esp32RetryAttempts = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_RETRY_ATTEMPTS") 
+    ?? throw new InvalidOperationException("BIOMETRIC_ESP32_RETRY_ATTEMPTS is not set in environment variables");
+
+builder.Configuration["Biometric:ESP32:ConnectionString"] = esp32ConnectionString;
+builder.Configuration["Biometric:ESP32:Timeout"] = esp32Timeout;
+builder.Configuration["Biometric:ESP32:RetryAttempts"] = esp32RetryAttempts;
+
 // Configure JWT Authentication
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? throw new InvalidOperationException("JWT_SECRET is not set in environment variables");
