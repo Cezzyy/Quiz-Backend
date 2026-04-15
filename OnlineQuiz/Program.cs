@@ -44,14 +44,24 @@ builder.Services.AddSingleton(supabaseService);
 // Configure Biometric ESP32
 var esp32ConnectionString = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_CONNECTION_STRING") 
     ?? throw new InvalidOperationException("BIOMETRIC_ESP32_CONNECTION_STRING is not set in environment variables");
-var esp32Timeout = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_TIMEOUT") 
+
+var esp32TimeoutStr = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_TIMEOUT") 
     ?? throw new InvalidOperationException("BIOMETRIC_ESP32_TIMEOUT is not set in environment variables");
-var esp32RetryAttempts = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_RETRY_ATTEMPTS") 
+if (!int.TryParse(esp32TimeoutStr, out int esp32Timeout) || esp32Timeout <= 0)
+{
+    throw new InvalidOperationException($"BIOMETRIC_ESP32_TIMEOUT must be a positive integer, got: {esp32TimeoutStr}");
+}
+
+var esp32RetryAttemptsStr = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_RETRY_ATTEMPTS") 
     ?? throw new InvalidOperationException("BIOMETRIC_ESP32_RETRY_ATTEMPTS is not set in environment variables");
+if (!int.TryParse(esp32RetryAttemptsStr, out int esp32RetryAttempts) || esp32RetryAttempts < 0)
+{
+    throw new InvalidOperationException($"BIOMETRIC_ESP32_RETRY_ATTEMPTS must be a non-negative integer, got: {esp32RetryAttemptsStr}");
+}
 
 builder.Configuration["Biometric:ESP32:ConnectionString"] = esp32ConnectionString;
-builder.Configuration["Biometric:ESP32:Timeout"] = esp32Timeout;
-builder.Configuration["Biometric:ESP32:RetryAttempts"] = esp32RetryAttempts;
+builder.Configuration["Biometric:ESP32:Timeout"] = esp32Timeout.ToString();
+builder.Configuration["Biometric:ESP32:RetryAttempts"] = esp32RetryAttempts.ToString();
 
 // Configure JWT Authentication
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
