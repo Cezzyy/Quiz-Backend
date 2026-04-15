@@ -571,33 +571,121 @@ namespace OnlineQuiz.Services
             }
 
             var archivedQuizzes = await _quizRepository.GetArchivedByCourseIdAsync(courseId);
-            var quizResponseDtos = new List<QuizResponseDto>();
-
-            foreach (var quiz in archivedQuizzes)
+            if (!archivedQuizzes.Any())
             {
-                var quizDto = await GetQuizByIdAsync(quiz.QuizId);
-                if (quizDto != null)
+                return new List<QuizResponseDto>();
+            }
+
+            var response = archivedQuizzes.Adapt<List<QuizResponseDto>>();
+            
+            // Batch fetch questions and choices
+            var quizIds = archivedQuizzes.Select(q => q.QuizId).ToList();
+            var allQuestions = await _quizRepository.GetQuestionsByQuizIdsAsync(quizIds);
+            var questionIds = allQuestions.Select(q => q.QuestionId).ToList();
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            
+            // Create lookup maps
+            var questionsMap = allQuestions.GroupBy(q => q.QuizId).ToDictionary(g => g.Key, g => g.ToList());
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
+            // Populate questions and choices for each quiz
+            foreach (var quizDto in response)
+            {
+                quizDto.Questions = new List<QuestionResponseDto>();
+                
+                if (questionsMap.TryGetValue(quizDto.QuizId, out var questions))
                 {
-                    quizResponseDtos.Add(quizDto);
+                    foreach (var question in questions)
+                    {
+                        var questionDto = question.Adapt<QuestionResponseDto>();
+                        
+                        if (choicesMap.TryGetValue(question.QuestionId, out var choices))
+                        {
+                            questionDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                        }
+                        else
+                        {
+                            questionDto.Choices = new List<ChoiceResponseDto>();
+                        }
+                        
+                        quizDto.Questions.Add(questionDto);
+                    }
                 }
             }
 
-            return quizResponseDtos;
+            return response;
         }
 
         public async Task<PagedResult<QuizResponseDto>> GetArchivedQuizzesPagedAsync(int courseId, int userId, PaginationParams paginationParams)
         {
-            var allArchivedQuizzes = await GetArchivedQuizzesAsync(courseId, userId);
+            // Verify user has access to the course
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new InvalidOperationException($"Course with ID {courseId} not found");
+            }
+
+            var archivedQuizzes = await _quizRepository.GetArchivedByCourseIdAsync(courseId);
+            var totalCount = archivedQuizzes.Count;
             
-            var pagedQuizzes = allArchivedQuizzes
+            // Apply pagination at the data level
+            var pagedQuizzes = archivedQuizzes
                 .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
                 .Take(paginationParams.PageSize)
                 .ToList();
 
+            if (!pagedQuizzes.Any())
+            {
+                return new PagedResult<QuizResponseDto>
+                {
+                    Items = new List<QuizResponseDto>(),
+                    TotalCount = totalCount,
+                    PageNumber = paginationParams.PageNumber,
+                    PageSize = paginationParams.PageSize
+                };
+            }
+
+            var response = pagedQuizzes.Adapt<List<QuizResponseDto>>();
+            
+            // Batch fetch questions and choices for this page only
+            var quizIds = pagedQuizzes.Select(q => q.QuizId).ToList();
+            var allQuestions = await _quizRepository.GetQuestionsByQuizIdsAsync(quizIds);
+            var questionIds = allQuestions.Select(q => q.QuestionId).ToList();
+            var allChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(questionIds);
+            
+            // Create lookup maps
+            var questionsMap = allQuestions.GroupBy(q => q.QuizId).ToDictionary(g => g.Key, g => g.ToList());
+            var choicesMap = allChoices.GroupBy(c => c.QuestionId).ToDictionary(g => g.Key, g => g.ToList());
+
+            // Populate questions and choices for each quiz
+            foreach (var quizDto in response)
+            {
+                quizDto.Questions = new List<QuestionResponseDto>();
+                
+                if (questionsMap.TryGetValue(quizDto.QuizId, out var questions))
+                {
+                    foreach (var question in questions)
+                    {
+                        var questionDto = question.Adapt<QuestionResponseDto>();
+                        
+                        if (choicesMap.TryGetValue(question.QuestionId, out var choices))
+                        {
+                            questionDto.Choices = choices.Adapt<List<ChoiceResponseDto>>();
+                        }
+                        else
+                        {
+                            questionDto.Choices = new List<ChoiceResponseDto>();
+                        }
+                        
+                        quizDto.Questions.Add(questionDto);
+                    }
+                }
+            }
+
             return new PagedResult<QuizResponseDto>
             {
-                Items = pagedQuizzes,
-                TotalCount = allArchivedQuizzes.Count,
+                Items = response,
+                TotalCount = totalCount,
                 PageNumber = paginationParams.PageNumber,
                 PageSize = paginationParams.PageSize
             };

@@ -833,15 +833,86 @@ namespace OnlineQuiz.Services
         public async Task<List<UserResponseDto>> GetArchivedUsersAsync()
         {
             var archivedUsers = await _userRepository.GetArchivedAsync();
+            if (!archivedUsers.Any())
+            {
+                return new List<UserResponseDto>();
+            }
+
+            // Batch fetch all related data
+            var userIds = archivedUsers.Select(u => u.UserId).ToList();
+            var userRolesTask = _userRoleRepository.GetAllAsync();
+            var studentsTask = _studentRepository.GetAllAsync();
+            var teachersTask = _teacherRepository.GetAllAsync();
+
+            await Task.WhenAll(userRolesTask, studentsTask, teachersTask);
+
+            var allUserRoles = await userRolesTask;
+            var allStudents = await studentsTask;
+            var allTeachers = await teachersTask;
+
+            // Create lookup dictionaries
+            var userRoleMap = allUserRoles.Where(ur => userIds.Contains(ur.UserId))
+                .GroupBy(ur => ur.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var studentMap = allStudents.Where(s => userIds.Contains(s.UserId))
+                .ToDictionary(s => s.UserId);
+            var teacherMap = allTeachers.Where(t => userIds.Contains(t.UserId))
+                .ToDictionary(t => t.UserId);
+
             var userResponseDtos = new List<UserResponseDto>();
 
             foreach (var user in archivedUsers)
             {
-                var userDto = await GetUserByIdAsync(user.UserId);
-                if (userDto != null)
+                if (!userRoleMap.TryGetValue(user.UserId, out var userRole))
                 {
-                    userResponseDtos.Add(userDto);
+                    continue; // Skip users without roles
                 }
+
+                var response = new UserResponseDto
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Status = user.Status,
+                    ContactNumber = user.ContactNumber,
+                    EmergencyContactNumber = user.EmergencyContactNumber,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt,
+                    CreatedBy = user.CreatedBy,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy,
+                    RoleId = userRole.RoleId,
+                    RoleName = GetRoleName(userRole.RoleId)
+                };
+
+                // Populate role-specific data
+                switch (userRole.RoleId)
+                {
+                    case RoleConstants.Student:
+                        if (studentMap.TryGetValue(user.UserId, out var student))
+                        {
+                            response.Student = new StudentData
+                            {
+                                StudentId = student.StudentId,
+                                YearLevel = student.YearLevel,
+                                Section = student.Section,
+                                Course = student.Course
+                            };
+                        }
+                        break;
+
+                    case RoleConstants.Teacher:
+                        if (teacherMap.TryGetValue(user.UserId, out var teacher))
+                        {
+                            response.Teacher = new TeacherData
+                            {
+                                Department = teacher.Department
+                            };
+                        }
+                        break;
+                }
+
+                userResponseDtos.Add(response);
             }
 
             return userResponseDtos;
@@ -849,17 +920,107 @@ namespace OnlineQuiz.Services
 
         public async Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams)
         {
-            var allArchivedUsers = await GetArchivedUsersAsync();
+            var archivedUsers = await _userRepository.GetArchivedAsync();
+            var totalCount = archivedUsers.Count;
             
-            var pagedUsers = allArchivedUsers
+            // Apply pagination at the data level
+            var pagedUsers = archivedUsers
                 .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
                 .Take(paginationParams.PageSize)
                 .ToList();
 
+            if (!pagedUsers.Any())
+            {
+                return new PagedResult<UserResponseDto>
+                {
+                    Items = new List<UserResponseDto>(),
+                    TotalCount = totalCount,
+                    PageNumber = paginationParams.PageNumber,
+                    PageSize = paginationParams.PageSize
+                };
+            }
+
+            // Batch fetch all related data for this page only
+            var userIds = pagedUsers.Select(u => u.UserId).ToList();
+            var userRolesTask = _userRoleRepository.GetAllAsync();
+            var studentsTask = _studentRepository.GetAllAsync();
+            var teachersTask = _teacherRepository.GetAllAsync();
+
+            await Task.WhenAll(userRolesTask, studentsTask, teachersTask);
+
+            var allUserRoles = await userRolesTask;
+            var allStudents = await studentsTask;
+            var allTeachers = await teachersTask;
+
+            // Create lookup dictionaries
+            var userRoleMap = allUserRoles.Where(ur => userIds.Contains(ur.UserId))
+                .GroupBy(ur => ur.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var studentMap = allStudents.Where(s => userIds.Contains(s.UserId))
+                .ToDictionary(s => s.UserId);
+            var teacherMap = allTeachers.Where(t => userIds.Contains(t.UserId))
+                .ToDictionary(t => t.UserId);
+
+            var userResponseDtos = new List<UserResponseDto>();
+
+            foreach (var user in pagedUsers)
+            {
+                if (!userRoleMap.TryGetValue(user.UserId, out var userRole))
+                {
+                    continue; // Skip users without roles
+                }
+
+                var response = new UserResponseDto
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Status = user.Status,
+                    ContactNumber = user.ContactNumber,
+                    EmergencyContactNumber = user.EmergencyContactNumber,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt,
+                    CreatedBy = user.CreatedBy,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy,
+                    RoleId = userRole.RoleId,
+                    RoleName = GetRoleName(userRole.RoleId)
+                };
+
+                // Populate role-specific data
+                switch (userRole.RoleId)
+                {
+                    case RoleConstants.Student:
+                        if (studentMap.TryGetValue(user.UserId, out var student))
+                        {
+                            response.Student = new StudentData
+                            {
+                                StudentId = student.StudentId,
+                                YearLevel = student.YearLevel,
+                                Section = student.Section,
+                                Course = student.Course
+                            };
+                        }
+                        break;
+
+                    case RoleConstants.Teacher:
+                        if (teacherMap.TryGetValue(user.UserId, out var teacher))
+                        {
+                            response.Teacher = new TeacherData
+                            {
+                                Department = teacher.Department
+                            };
+                        }
+                        break;
+                }
+
+                userResponseDtos.Add(response);
+            }
+
             return new PagedResult<UserResponseDto>
             {
-                Items = pagedUsers,
-                TotalCount = allArchivedUsers.Count,
+                Items = userResponseDtos,
+                TotalCount = totalCount,
                 PageNumber = paginationParams.PageNumber,
                 PageSize = paginationParams.PageSize
             };

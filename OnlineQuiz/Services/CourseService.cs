@@ -709,33 +709,72 @@ namespace OnlineQuiz.Services
         public async Task<List<CourseResponseDto>> GetArchivedCoursesAsync()
         {
             var archivedCourses = await _courseRepository.GetArchivedAsync();
-            var courseResponseDtos = new List<CourseResponseDto>();
-
-            foreach (var course in archivedCourses)
+            if (!archivedCourses.Any())
             {
-                var courseDto = await GetCourseByIdAsync(course.CourseId);
-                if (courseDto != null)
+                return new List<CourseResponseDto>();
+            }
+
+            var response = archivedCourses.Adapt<List<CourseResponseDto>>();
+            
+            // Batch fetch instructors to avoid
+            var instructorIds = archivedCourses.Select(c => c.InstructorUserId).Distinct().ToList();
+            var instructors = await _userRepository.GetByIdsAsync(instructorIds);
+            var instructorMap = instructors.ToDictionary(u => u.UserId, u => u.FullName);
+
+            // Populate instructor names
+            foreach (var dto in response)
+            {
+                if (instructorMap.TryGetValue(dto.InstructorId, out var instructorName))
                 {
-                    courseResponseDtos.Add(courseDto);
+                    dto.InstructorName = instructorName;
                 }
             }
 
-            return courseResponseDtos;
+            return response;
         }
 
         public async Task<PagedResult<CourseResponseDto>> GetArchivedCoursesPagedAsync(PaginationParams paginationParams)
         {
-            var allArchivedCourses = await GetArchivedCoursesAsync();
+            var archivedCourses = await _courseRepository.GetArchivedAsync();
+            var totalCount = archivedCourses.Count;
             
-            var pagedCourses = allArchivedCourses
+            // Apply pagination at the data level
+            var pagedCourses = archivedCourses
                 .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
                 .Take(paginationParams.PageSize)
                 .ToList();
 
+            if (!pagedCourses.Any())
+            {
+                return new PagedResult<CourseResponseDto>
+                {
+                    Items = new List<CourseResponseDto>(),
+                    TotalCount = totalCount,
+                    PageNumber = paginationParams.PageNumber,
+                    PageSize = paginationParams.PageSize
+                };
+            }
+
+            var response = pagedCourses.Adapt<List<CourseResponseDto>>();
+            
+            // Batch fetch instructors for this page only
+            var instructorIds = pagedCourses.Select(c => c.InstructorUserId).Distinct().ToList();
+            var instructors = await _userRepository.GetByIdsAsync(instructorIds);
+            var instructorMap = instructors.ToDictionary(u => u.UserId, u => u.FullName);
+
+            // Populate instructor names
+            foreach (var dto in response)
+            {
+                if (instructorMap.TryGetValue(dto.InstructorId, out var instructorName))
+                {
+                    dto.InstructorName = instructorName;
+                }
+            }
+
             return new PagedResult<CourseResponseDto>
             {
-                Items = pagedCourses,
-                TotalCount = allArchivedCourses.Count,
+                Items = response,
+                TotalCount = totalCount,
                 PageNumber = paginationParams.PageNumber,
                 PageSize = paginationParams.PageSize
             };
