@@ -85,12 +85,14 @@ namespace OnlineQuiz.Services
                         response.Message);
                 }
 
-                // Send SignalR notification
-                if (_hubContext != null)
+                // Send SignalR notification to SPECIFIC USER only (not broadcast)
+                if (_hubContext != null && response.UserId.HasValue)
                 {
+                    var userGroup = $"user_{response.UserId.Value}";
+                    
                     if (response.Success)
                     {
-                        await _hubContext.Clients.All.SendAsync("EnrollmentCompleted", new
+                        await _hubContext.Clients.Group(userGroup).SendAsync("EnrollmentCompleted", new
                         {
                             success = true,
                             userId = response.UserId,
@@ -100,7 +102,7 @@ namespace OnlineQuiz.Services
                     }
                     else
                     {
-                        await _hubContext.Clients.All.SendAsync("EnrollmentFailed", new
+                        await _hubContext.Clients.Group(userGroup).SendAsync("EnrollmentFailed", new
                         {
                             success = false,
                             userId = response.UserId,
@@ -121,27 +123,32 @@ namespace OnlineQuiz.Services
         {
             try
             {
-                _logger.LogInformation("BiometricListenerService: Verification completed - Success: {Success}, Slot: {SlotId}", 
-                    response.Success, response.SlotId);
+                _logger.LogInformation("BiometricListenerService: Verification completed - Success: {Success}, Slot: {SlotId}, UserId: {UserId}", 
+                    response.Success, response.SlotId, response.UserId);
 
-                if (_hubContext != null)
+                // Send SignalR notification to SPECIFIC USER only (not broadcast)
+                if (_hubContext != null && response.UserId.HasValue)
                 {
+                    var userGroup = $"user_{response.UserId.Value}";
+                    
                     if (response.Success)
                     {
-                        await _hubContext.Clients.All.SendAsync("VerificationCompleted", new
+                        await _hubContext.Clients.Group(userGroup).SendAsync("VerificationCompleted", new
                         {
                             success = true,
                             matched = true,
+                            userId = response.UserId,
                             slotId = response.SlotId,
                             message = response.Message
                         });
                     }
                     else
                     {
-                        await _hubContext.Clients.All.SendAsync("VerificationFailed", new
+                        await _hubContext.Clients.Group(userGroup).SendAsync("VerificationFailed", new
                         {
                             success = false,
                             matched = false,
+                            userId = response.UserId,
                             slotId = response.SlotId,
                             message = response.Message,
                             errorCode = response.ErrorCode
@@ -161,6 +168,8 @@ namespace OnlineQuiz.Services
             {
                 _logger.LogInformation("BiometricListenerService: Device status changed to {Status}", status);
 
+                // Device status is not user-specific, but still limit to authenticated users
+                // This broadcasts to all connected clients (device availability is public info)
                 if (_hubContext != null)
                 {
                     await _hubContext.Clients.All.SendAsync("DeviceStatusChanged", new

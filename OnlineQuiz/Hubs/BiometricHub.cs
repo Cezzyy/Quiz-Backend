@@ -23,16 +23,32 @@ namespace OnlineQuiz.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            var userId = Context.User?.FindFirst("userId")?.Value;
-            _logger.LogInformation("BiometricHub: User {UserId} connected with connection ID {ConnectionId}", userId, Context.ConnectionId);
+            var userIdClaim = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            if (!string.IsNullOrEmpty(userIdClaim))
+            {
+                // Add user to their personal group for targeted notifications
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userIdClaim}");
+                _logger.LogInformation("BiometricHub: User {UserId} connected with connection ID {ConnectionId} and added to group", userIdClaim, Context.ConnectionId);
+            }
+            else
+            {
+                _logger.LogWarning("BiometricHub: Connection {ConnectionId} has no userId claim", Context.ConnectionId);
+            }
             
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var userId = Context.User?.FindFirst("userId")?.Value;
-            _logger.LogInformation("BiometricHub: User {UserId} disconnected with connection ID {ConnectionId}", userId, Context.ConnectionId);
+            var userIdClaim = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            if (!string.IsNullOrEmpty(userIdClaim))
+            {
+                // Remove user from their personal group
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user_{userIdClaim}");
+                _logger.LogInformation("BiometricHub: User {UserId} disconnected with connection ID {ConnectionId}", userIdClaim, Context.ConnectionId);
+            }
             
             await base.OnDisconnectedAsync(exception);
         }
@@ -48,14 +64,16 @@ namespace OnlineQuiz.Hubs
         {
             try
             {
-                var currentUserId = int.Parse(Context.User?.FindFirst("userId")?.Value ?? "0");
+                var currentUserId = int.Parse(Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
                 _logger.LogInformation("BiometricHub: Enrollment requested for user {UserId} by {CurrentUserId}", userId, currentUserId);
 
                 var result = await _biometricService.StartEnrollmentAsync(userId, currentUserId);
 
                 if (result.Success)
                 {
-                    await Clients.All.SendAsync("EnrollmentStarted", new
+                    // Send to specific user only
+                    var userGroup = $"user_{userId}";
+                    await Clients.Group(userGroup).SendAsync("EnrollmentStarted", new
                     {
                         userId = userId,
                         slotId = result.SlotId,
@@ -95,7 +113,9 @@ namespace OnlineQuiz.Hubs
 
                 if (result.Success)
                 {
-                    await Clients.All.SendAsync("VerificationStarted", new
+                    // Send to specific user only
+                    var userGroup = $"user_{userId}";
+                    await Clients.Group(userGroup).SendAsync("VerificationStarted", new
                     {
                         userId = userId,
                         quizId = quizId,
@@ -131,11 +151,13 @@ namespace OnlineQuiz.Hubs
         {
             try
             {
-                _logger.LogInformation("BiometricHub: Cancel operation requested");
+                var currentUserId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                _logger.LogInformation("BiometricHub: Cancel operation requested by user {UserId}", currentUserId);
 
                 var success = await _biometricService.CancelCurrentOperationAsync();
 
-                await Clients.All.SendAsync("OperationCancelled", new
+                // Send only to the caller who requested cancellation
+                await Clients.Caller.SendAsync("OperationCancelled", new
                 {
                     success = success,
                     message = success ? "Operation cancelled" : "Failed to cancel operation"
