@@ -124,7 +124,21 @@ namespace OnlineQuiz.Repository
             try
             {
                 var client = _supabaseService.GetClient();
-                // Get all users who have fingerprint enrolled
+                try
+                {
+                    var rpcResult = await client.Rpc("get_available_fingerprint_slots", null);
+                    if (rpcResult?.Content != null)
+                    {
+                        var slots = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, int>>>(rpcResult.Content);
+                        return slots?.Select(s => s["slot_id"]).ToList() ?? new List<int>();
+                    }
+                }
+                catch (Exception rpcEx)
+                {
+                    _logger.LogWarning(rpcEx, "RPC function not available");
+                }
+                _logger.LogWarning("Using fallback method");
+                
                 var response = await client
                     .From<User>()
                     .Get();
@@ -152,6 +166,22 @@ namespace OnlineQuiz.Repository
         {
             try
             {
+                var client = _supabaseService.GetClient();
+                try
+                {
+                    var rpcResult = await client.Rpc("get_next_available_fingerprint_slot", null);
+                    if (rpcResult?.Content != null)
+                    {
+                        var slotId = System.Text.Json.JsonSerializer.Deserialize<int?>(rpcResult.Content);
+                        return slotId;
+                    }
+                }
+                catch (Exception rpcEx)
+                {
+                    _logger.LogWarning(rpcEx, "RPC function not available");
+                }
+                
+                // Fallback
                 var availableSlots = await GetAvailableSlotsAsync();
                 
                 if (availableSlots.Count == 0)
