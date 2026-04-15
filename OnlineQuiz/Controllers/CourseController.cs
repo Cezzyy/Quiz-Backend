@@ -538,29 +538,31 @@ namespace OnlineQuiz.Controllers
         {
             try
             {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
                 var result = await _courseService.BulkUnarchiveCoursesAsync(dto.Ids);
 
                 // Log the BULK_UNARCHIVE activity
-                var currentUserId = JwtTokenGenerator.GetUserId(User);
-                if (currentUserId.HasValue && currentUserId.Value > 0)
+                try
                 {
-                    try
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        await _activityLogService.LogActivityAsync(new CreateActivityLogDto
-                        {
-                            UserId = currentUserId.Value,
-                            Action = ActivityLogConstants.Actions.UPDATE,
-                            Entity = ActivityLogConstants.Entities.Course,
-                            Description = $"Bulk unarchived {result.SuccessCount} courses",
-                            NewValues = new { CourseIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
-                            IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
-                            UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
-                        });
-                    }
-                    catch (Exception logEx)
-                    {
-                        Console.WriteLine($"Failed to log BULK_UNARCHIVE activity: {logEx.Message}");
-                    }
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Course,
+                        Description = $"Bulk unarchived {result.SuccessCount} courses",
+                        NewValues = new { CourseIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_UNARCHIVE activity: {logEx.Message}");
                 }
 
                 return Ok(result);
