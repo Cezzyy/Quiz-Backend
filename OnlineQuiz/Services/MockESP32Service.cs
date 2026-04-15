@@ -231,7 +231,7 @@ namespace OnlineQuiz.Services
             {
                 IsConnected = _isConnected,
                 CurrentMode = _currentMode,
-                ActiveUserId = _activeSlotId
+                ActiveUserId = _activeUserId
             });
         }
     }
