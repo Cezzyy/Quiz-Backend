@@ -58,14 +58,41 @@ namespace OnlineQuiz.Hubs
         // =====================================================
 
         /// <summary>
-        /// Request fingerprint enrollment for a user
+        /// Request fingerprint enrollment for a user (Teacher/Admin only)
         /// </summary>
         public async Task RequestEnrollment(int userId)
         {
             try
             {
-                var currentUserId = int.Parse(Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-                _logger.LogInformation("BiometricHub: Enrollment requested for user {UserId} by {CurrentUserId}", userId, currentUserId);
+                // Get current user ID
+                var currentUserIdStr = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(currentUserIdStr) || !int.TryParse(currentUserIdStr, out int currentUserId))
+                {
+                    _logger.LogWarning("BiometricHub: Enrollment request rejected - invalid or missing userId claim");
+                    await Clients.Caller.SendAsync("EnrollmentFailed", new
+                    {
+                        userId = userId,
+                        message = "Unauthorized: Invalid authentication"
+                    });
+                    return;
+                }
+
+                // Check if user has permission (Teacher or Admin only)
+                var userRole = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                if (userRole != "Teacher" && userRole != "Admin")
+                {
+                    _logger.LogWarning("BiometricHub: Enrollment request rejected - user {CurrentUserId} with role {Role} attempted to enroll user {UserId}", 
+                        currentUserId, userRole ?? "None", userId);
+                    await Clients.Caller.SendAsync("EnrollmentFailed", new
+                    {
+                        userId = userId,
+                        message = "Unauthorized: Only teachers and admins can enroll fingerprints"
+                    });
+                    return;
+                }
+
+                _logger.LogInformation("BiometricHub: Enrollment requested for user {UserId} by {CurrentUserId} (Role: {Role})", 
+                    userId, currentUserId, userRole);
 
                 var result = await _biometricService.StartEnrollmentAsync(userId, currentUserId);
 
@@ -107,7 +134,36 @@ namespace OnlineQuiz.Hubs
         {
             try
             {
-                _logger.LogInformation("BiometricHub: Verification requested for user {UserId}", userId);
+                // Get current user ID
+                var currentUserIdStr = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(currentUserIdStr) || !int.TryParse(currentUserIdStr, out int currentUserId))
+                {
+                    _logger.LogWarning("BiometricHub: Verification request rejected - invalid or missing userId claim");
+                    await Clients.Caller.SendAsync("VerificationFailed", new
+                    {
+                        userId = userId,
+                        matched = false,
+                        message = "Unauthorized: Invalid authentication"
+                    });
+                    return;
+                }
+
+                // Authorization: Users can verify themselves, or Teacher/Admin can verify anyone
+                var userRole = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                if (userId != currentUserId && userRole != "Teacher" && userRole != "Admin")
+                {
+                    _logger.LogWarning("BiometricHub: Verification request rejected - user {CurrentUserId} attempted to verify user {UserId}", 
+                        currentUserId, userId);
+                    await Clients.Caller.SendAsync("VerificationFailed", new
+                    {
+                        userId = userId,
+                        matched = false,
+                        message = "Unauthorized: You can only verify your own fingerprint"
+                    });
+                    return;
+                }
+
+                _logger.LogInformation("BiometricHub: Verification requested for user {UserId} by {CurrentUserId}", userId, currentUserId);
 
                 var result = await _biometricService.StartVerificationAsync(userId, quizId);
 
