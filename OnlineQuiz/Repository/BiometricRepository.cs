@@ -153,7 +153,13 @@ namespace OnlineQuiz.Repository
             try
             {
                 var availableSlots = await GetAvailableSlotsAsync();
-                return availableSlots.FirstOrDefault();
+                
+                if (availableSlots.Count == 0)
+                {
+                    return null;
+                }
+                
+                return availableSlots.First();
             }
             catch (Exception ex)
             {
