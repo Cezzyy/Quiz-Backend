@@ -12,6 +12,11 @@ namespace OnlineQuiz.DTOs
         public DateTime UpdatedAt { get; set; }
         public int? CreatedBy { get; set; }
 
+        // Archive information
+        public DateTime? ArchivedAt { get; set; }
+        public int? ArchivedBy { get; set; }
+        public string? ArchivedByName { get; set; }
+
         // Role information
         public int RoleId { get; set; }
         public string RoleName { get; set; } = string.Empty;

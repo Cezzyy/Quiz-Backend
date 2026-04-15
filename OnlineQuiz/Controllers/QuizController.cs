@@ -308,5 +308,283 @@ namespace OnlineQuiz.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Archive a quiz (Instructor or Admin only)
+        /// </summary>
+        [HttpPost("{quizId}/archive")]
+        [Authorize]
+        [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<QuizResponseDto>> ArchiveQuiz(int quizId)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var quiz = await _quizService.ArchiveQuizAsync(quizId, currentUserId.Value, currentUserId.Value);
+
+                // Log the ARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Quiz,
+                        EntityId = quizId,
+                        Description = $"Archived quiz {quiz.Title}",
+                        OldValues = new { Status = "Active" },
+                        NewValues = new { Status = "Archived", ArchivedAt = quiz.ArchivedAt, ArchivedBy = quiz.ArchivedBy },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log ARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(quiz);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while archiving quiz", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Unarchive (restore) a quiz (Instructor or Admin only)
+        /// </summary>
+        [HttpPost("{quizId}/unarchive")]
+        [Authorize]
+        [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<QuizResponseDto>> UnarchiveQuiz(int quizId)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var quiz = await _quizService.UnarchiveQuizAsync(quizId, currentUserId.Value);
+
+                // Log the UNARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Quiz,
+                        EntityId = quizId,
+                        Description = $"Unarchived quiz {quiz.Title}",
+                        OldValues = new { Status = "Archived" },
+                        NewValues = new { Status = "Active" },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log UNARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(quiz);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while unarchiving quiz", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Bulk archive quizzes (Instructor or Admin only)
+        /// </summary>
+        [HttpPost("bulk-archive")]
+        [Authorize]
+        [EnableRateLimiting("bulk-operations")]
+        [ProducesResponseType(typeof(BulkArchiveResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BulkArchiveResponseDto>> BulkArchiveQuizzes([FromBody] BulkArchiveDto dto)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var result = await _quizService.BulkArchiveQuizzesAsync(dto.Ids, currentUserId.Value, currentUserId.Value);
+
+                // Log the BULK_ARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Quiz,
+                        Description = $"Bulk archived {result.SuccessCount} quizzes",
+                        NewValues = new { QuizIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_ARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk archiving quizzes", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Bulk unarchive quizzes (Instructor or Admin only)
+        /// </summary>
+        [HttpPost("bulk-unarchive")]
+        [Authorize]
+        [EnableRateLimiting("bulk-operations")]
+        [ProducesResponseType(typeof(BulkArchiveResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BulkArchiveResponseDto>> BulkUnarchiveQuizzes([FromBody] BulkUnarchiveDto dto)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var result = await _quizService.BulkUnarchiveQuizzesAsync(dto.Ids, currentUserId.Value);
+
+                // Log the BULK_UNARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.Quiz,
+                        Description = $"Bulk unarchived {result.SuccessCount} quizzes",
+                        NewValues = new { QuizIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_UNARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk unarchiving quizzes", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get archived quizzes for a course (Instructor or Admin only)
+        /// </summary>
+        [HttpGet("course/{courseId}/archived")]
+        [Authorize]
+        [ProducesResponseType(typeof(List<QuizResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<QuizResponseDto>>> GetArchivedQuizzes(int courseId)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var quizzes = await _quizService.GetArchivedQuizzesAsync(courseId, currentUserId.Value);
+                return Ok(quizzes);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archived quizzes", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get archived quizzes with pagination (Instructor or Admin only)
+        /// </summary>
+        [HttpGet("course/{courseId}/archived/paged")]
+        [Authorize]
+        [ProducesResponseType(typeof(PagedResult<QuizResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<QuizResponseDto>>> GetArchivedQuizzesPaged(int courseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _quizService.GetArchivedQuizzesPagedAsync(courseId, currentUserId.Value, paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archived quizzes", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get quiz archive statistics (Admin only)
+        /// </summary>
+        [HttpGet("archive-statistics")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ArchiveStatisticsDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ArchiveStatisticsDto>> GetQuizArchiveStatistics([FromQuery] int? courseId = null)
+        {
+            try
+            {
+                var statistics = await _quizService.GetQuizArchiveStatisticsAsync(courseId);
+                return Ok(statistics);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archive statistics", details = ex.Message });
+            }
+        }
     }
 }

@@ -19,5 +19,14 @@ namespace OnlineQuiz.IServices
         Task<PagedResult<CourseResponseDto>> GetCoursesForStudentPagedAsync(int studentId, PaginationParams paginationParams);
         Task<int> BulkDeleteCoursesAsync(List<int> courseIds);
         Task<int> BulkUnenrollStudentsAsync(BulkDeleteEnrollmentsDto dto, int teacherId);
+
+        // Archive operations
+        Task<CourseResponseDto> ArchiveCourseAsync(int courseId, int archivedBy);
+        Task<CourseResponseDto> UnarchiveCourseAsync(int courseId);
+        Task<BulkArchiveResponseDto> BulkArchiveCoursesAsync(List<int> courseIds, int archivedBy);
+        Task<BulkArchiveResponseDto> BulkUnarchiveCoursesAsync(List<int> courseIds);
+        Task<List<CourseResponseDto>> GetArchivedCoursesAsync();
+        Task<PagedResult<CourseResponseDto>> GetArchivedCoursesPagedAsync(PaginationParams paginationParams);
+        Task<ArchiveStatisticsDto> GetCourseArchiveStatisticsAsync();
     }
 }

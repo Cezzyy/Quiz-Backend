@@ -427,5 +427,261 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { error = "An error occurred while resetting password", details = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Archive a user (Admin only)
+        /// </summary>
+        [HttpPost("{id}/archive")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserResponseDto>> ArchiveUser(int id)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var user = await _userService.ArchiveUserAsync(id, currentUserId.Value);
+
+                // Log the ARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        EntityId = id,
+                        Description = $"Archived user {user.Email}",
+                        OldValues = new { Status = "Active" },
+                        NewValues = new { Status = "Archived", ArchivedAt = user.ArchivedAt, ArchivedBy = user.ArchivedBy },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log ARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(user);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while archiving user", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Unarchive (restore) a user (Admin only)
+        /// </summary>
+        [HttpPost("{id}/unarchive")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserResponseDto>> UnarchiveUser(int id)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var user = await _userService.UnarchiveUserAsync(id);
+
+                // Log the UNARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        EntityId = id,
+                        Description = $"Unarchived user {user.Email}",
+                        OldValues = new { Status = "Archived" },
+                        NewValues = new { Status = "Active" },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log UNARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(user);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while unarchiving user", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Bulk archive users (Admin only)
+        /// </summary>
+        [HttpPost("bulk-archive")]
+        [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("bulk-operations")]
+        [ProducesResponseType(typeof(BulkArchiveResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BulkArchiveResponseDto>> BulkArchiveUsers([FromBody] BulkArchiveDto dto)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var result = await _userService.BulkArchiveUsersAsync(dto.Ids, currentUserId.Value);
+
+                // Log the BULK_ARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        Description = $"Bulk archived {result.SuccessCount} users",
+                        NewValues = new { UserIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_ARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk archiving users", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Bulk unarchive users (Admin only)
+        /// </summary>
+        [HttpPost("bulk-unarchive")]
+        [Authorize(Roles = "Admin")]
+        [EnableRateLimiting("bulk-operations")]
+        [ProducesResponseType(typeof(BulkArchiveResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<BulkArchiveResponseDto>> BulkUnarchiveUsers([FromBody] BulkUnarchiveDto dto)
+        {
+            try
+            {
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var result = await _userService.BulkUnarchiveUsersAsync(dto.Ids);
+
+                // Log the BULK_UNARCHIVE activity
+                try
+                {
+                    await _activityLogService.LogActivityAsync(new CreateActivityLogDto
+                    {
+                        UserId = currentUserId.Value,
+                        Action = ActivityLogConstants.Actions.UPDATE,
+                        Entity = ActivityLogConstants.Entities.User,
+                        Description = $"Bulk unarchived {result.SuccessCount} users",
+                        NewValues = new { UserIds = dto.Ids, SuccessCount = result.SuccessCount, FailureCount = result.FailureCount },
+                        IpAddress = ActivityLogHelper.GetIpAddress(HttpContext),
+                        UserAgent = ActivityLogHelper.GetUserAgent(HttpContext)
+                    });
+                }
+                catch (Exception logEx)
+                {
+                    Console.WriteLine($"Failed to log BULK_UNARCHIVE activity: {logEx.Message}");
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while bulk unarchiving users", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all archived users (Admin only)
+        /// </summary>
+        [HttpGet("archived")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(List<UserResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<UserResponseDto>>> GetArchivedUsers()
+        {
+            try
+            {
+                var users = await _userService.GetArchivedUsersAsync();
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archived users", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get archived users with pagination (Admin only)
+        /// </summary>
+        [HttpGet("archived/paged")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(PagedResult<UserResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<UserResponseDto>>> GetArchivedUsersPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
+                var result = await _userService.GetArchivedUsersPagedAsync(paginationParams);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archived users", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get user archive statistics (Admin only)
+        /// </summary>
+        [HttpGet("archive-statistics")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ArchiveStatisticsDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ArchiveStatisticsDto>> GetUserArchiveStatistics()
+        {
+            try
+            {
+                var statistics = await _userService.GetUserArchiveStatisticsAsync();
+                return Ok(statistics);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving archive statistics", details = ex.Message });
+            }
+        }
     }
 }

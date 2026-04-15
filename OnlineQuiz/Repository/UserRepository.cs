@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Repository
 {
@@ -51,7 +52,9 @@ namespace OnlineQuiz.Repository
         public async Task<List<User>> GetAllAsync()
         {
             var client = _supabaseService.GetClient();
-            var result = await client.From<User>().Get();
+            var result = await client.From<User>()
+                .Where(u => u.Status != EntityStatusConstants.Archived)
+                .Get();
             return result.Models;
         }
 
@@ -69,7 +72,9 @@ namespace OnlineQuiz.Repository
         public async Task<int> CountAsync()
         {
             var client = _supabaseService.GetClient();
-            var result = await client.From<User>().Count(Postgrest.Constants.CountType.Exact);
+            var result = await client.From<User>()
+                .Where(u => u.Status != EntityStatusConstants.Archived)
+                .Count(Postgrest.Constants.CountType.Exact);
             return result;
         }
 
@@ -91,6 +96,7 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
                 .Filter("CreatedAt", Postgrest.Constants.Operator.GreaterThanOrEqual, cutoffDate.ToString("o"))
+                .Where(u => u.Status != EntityStatusConstants.Archived)
                 .Order("CreatedAt", Postgrest.Constants.Ordering.Descending)
                 .Get();
             return result.Models;
@@ -122,6 +128,101 @@ namespace OnlineQuiz.Repository
                 .Filter("UserId", Postgrest.Constants.Operator.In, userIds)
                 .Delete();
             return userIds.Count;
+        }
+
+        // Archive operations
+        public async Task<User?> ArchiveAsync(int userId, int archivedBy)
+        {
+            var user = await GetByIdAsync(userId);
+            if (user == null) return null;
+
+            user.Status = EntityStatusConstants.Archived;
+            user.ArchivedAt = DateTime.UtcNow;
+            user.ArchivedBy = archivedBy;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            return await UpdateAsync(user);
+        }
+
+        public async Task<User?> UnarchiveAsync(int userId)
+        {
+            var user = await GetByIdAsync(userId);
+            if (user == null) return null;
+
+            user.Status = EntityStatusConstants.Active;
+            user.ArchivedAt = null;
+            user.ArchivedBy = null;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            return await UpdateAsync(user);
+        }
+
+        public async Task<int> BulkArchiveAsync(List<int> userIds, int archivedBy)
+        {
+            if (!userIds.Any()) return 0;
+
+            var users = await GetByIdsAsync(userIds);
+            var archiveCount = 0;
+
+            foreach (var user in users)
+            {
+                user.Status = EntityStatusConstants.Archived;
+                user.ArchivedAt = DateTime.UtcNow;
+                user.ArchivedBy = archivedBy;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await UpdateAsync(user);
+                archiveCount++;
+            }
+
+            return archiveCount;
+        }
+
+        public async Task<int> BulkUnarchiveAsync(List<int> userIds)
+        {
+            if (!userIds.Any()) return 0;
+
+            var users = await GetByIdsAsync(userIds);
+            var unarchiveCount = 0;
+
+            foreach (var user in users)
+            {
+                user.Status = EntityStatusConstants.Active;
+                user.ArchivedAt = null;
+                user.ArchivedBy = null;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await UpdateAsync(user);
+                unarchiveCount++;
+            }
+
+            return unarchiveCount;
+        }
+
+        public async Task<List<User>> GetArchivedAsync()
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>()
+                .Where(u => u.Status == EntityStatusConstants.Archived)
+                .Order("ArchivedAt", Postgrest.Constants.Ordering.Descending)
+                .Get();
+            return result.Models;
+        }
+
+        public async Task<List<User>> GetAllIncludingArchivedAsync()
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>().Get();
+            return result.Models;
+        }
+
+        public async Task<int> CountArchivedAsync()
+        {
+            var client = _supabaseService.GetClient();
+            var result = await client.From<User>()
+                .Where(u => u.Status == EntityStatusConstants.Archived)
+                .Count(Postgrest.Constants.CountType.Exact);
+            return result;
         }
     }
 }

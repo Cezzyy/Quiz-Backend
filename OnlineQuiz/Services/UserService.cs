@@ -724,5 +724,326 @@ namespace OnlineQuiz.Services
                 _ => "Unknown"
             };
         }
+
+        // Archive operations
+        public async Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User with ID {userId} not found");
+            }
+
+            if (user.Status == EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"User with ID {userId} is already archived");
+            }
+
+            var archivedUser = await _userRepository.ArchiveAsync(userId, archivedBy);
+            if (archivedUser == null)
+            {
+                throw new InvalidOperationException($"Failed to archive user with ID {userId}");
+            }
+
+            return await GetUserByIdAsync(userId) ?? throw new InvalidOperationException("Failed to retrieve archived user");
+        }
+
+        public async Task<UserResponseDto> UnarchiveUserAsync(int userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User with ID {userId} not found");
+            }
+
+            if (user.Status != EntityStatusConstants.Archived)
+            {
+                throw new InvalidOperationException($"User with ID {userId} is not archived");
+            }
+
+            var unarchivedUser = await _userRepository.UnarchiveAsync(userId);
+            if (unarchivedUser == null)
+            {
+                throw new InvalidOperationException($"Failed to unarchive user with ID {userId}");
+            }
+
+            return await GetUserByIdAsync(userId) ?? throw new InvalidOperationException("Failed to retrieve unarchived user");
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = userIds.Count
+            };
+
+            foreach (var userId in userIds)
+            {
+                try
+                {
+                    await ArchiveUserAsync(userId, archivedBy);
+                    response.SuccessfulIds.Add(userId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = userId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Archived {response.SuccessCount} of {response.TotalRequested} users";
+            return response;
+        }
+
+        public async Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds)
+        {
+            var response = new BulkArchiveResponseDto
+            {
+                TotalRequested = userIds.Count
+            };
+
+            foreach (var userId in userIds)
+            {
+                try
+                {
+                    await UnarchiveUserAsync(userId);
+                    response.SuccessfulIds.Add(userId);
+                    response.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    response.Errors.Add(new ArchiveErrorDto
+                    {
+                        Id = userId,
+                        Error = ex.Message
+                    });
+                    response.FailureCount++;
+                }
+            }
+
+            response.Message = $"Unarchived {response.SuccessCount} of {response.TotalRequested} users";
+            return response;
+        }
+
+        public async Task<List<UserResponseDto>> GetArchivedUsersAsync()
+        {
+            var archivedUsers = await _userRepository.GetArchivedAsync();
+            if (!archivedUsers.Any())
+            {
+                return new List<UserResponseDto>();
+            }
+
+            // Batch fetch all related data
+            var userIds = archivedUsers.Select(u => u.UserId).ToList();
+            var userRolesTask = _userRoleRepository.GetAllAsync();
+            var studentsTask = _studentRepository.GetAllAsync();
+            var teachersTask = _teacherRepository.GetAllAsync();
+
+            await Task.WhenAll(userRolesTask, studentsTask, teachersTask);
+
+            var allUserRoles = await userRolesTask;
+            var allStudents = await studentsTask;
+            var allTeachers = await teachersTask;
+
+            // Create lookup dictionaries
+            var userRoleMap = allUserRoles.Where(ur => userIds.Contains(ur.UserId))
+                .GroupBy(ur => ur.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var studentMap = allStudents.Where(s => userIds.Contains(s.UserId))
+                .ToDictionary(s => s.UserId);
+            var teacherMap = allTeachers.Where(t => userIds.Contains(t.UserId))
+                .ToDictionary(t => t.UserId);
+
+            var userResponseDtos = new List<UserResponseDto>();
+
+            foreach (var user in archivedUsers)
+            {
+                if (!userRoleMap.TryGetValue(user.UserId, out var userRole))
+                {
+                    continue; // Skip users without roles
+                }
+
+                var response = new UserResponseDto
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Status = user.Status,
+                    ContactNumber = user.ContactNumber,
+                    EmergencyContactNumber = user.EmergencyContactNumber,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt,
+                    CreatedBy = user.CreatedBy,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy,
+                    RoleId = userRole.RoleId,
+                    RoleName = GetRoleName(userRole.RoleId)
+                };
+
+                // Populate role-specific data
+                switch (userRole.RoleId)
+                {
+                    case RoleConstants.Student:
+                        if (studentMap.TryGetValue(user.UserId, out var student))
+                        {
+                            response.Student = new StudentData
+                            {
+                                StudentId = student.StudentId,
+                                YearLevel = student.YearLevel,
+                                Section = student.Section,
+                                Course = student.Course
+                            };
+                        }
+                        break;
+
+                    case RoleConstants.Teacher:
+                        if (teacherMap.TryGetValue(user.UserId, out var teacher))
+                        {
+                            response.Teacher = new TeacherData
+                            {
+                                Department = teacher.Department
+                            };
+                        }
+                        break;
+                }
+
+                userResponseDtos.Add(response);
+            }
+
+            return userResponseDtos;
+        }
+
+        public async Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams)
+        {
+            var archivedUsers = await _userRepository.GetArchivedAsync();
+            var totalCount = archivedUsers.Count;
+            
+            // Apply pagination at the data level
+            var pagedUsers = archivedUsers
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToList();
+
+            if (!pagedUsers.Any())
+            {
+                return new PagedResult<UserResponseDto>
+                {
+                    Items = new List<UserResponseDto>(),
+                    TotalCount = totalCount,
+                    PageNumber = paginationParams.PageNumber,
+                    PageSize = paginationParams.PageSize
+                };
+            }
+
+            // Batch fetch all related data for this page only
+            var userIds = pagedUsers.Select(u => u.UserId).ToList();
+            var userRolesTask = _userRoleRepository.GetAllAsync();
+            var studentsTask = _studentRepository.GetAllAsync();
+            var teachersTask = _teacherRepository.GetAllAsync();
+
+            await Task.WhenAll(userRolesTask, studentsTask, teachersTask);
+
+            var allUserRoles = await userRolesTask;
+            var allStudents = await studentsTask;
+            var allTeachers = await teachersTask;
+
+            // Create lookup dictionaries
+            var userRoleMap = allUserRoles.Where(ur => userIds.Contains(ur.UserId))
+                .GroupBy(ur => ur.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var studentMap = allStudents.Where(s => userIds.Contains(s.UserId))
+                .ToDictionary(s => s.UserId);
+            var teacherMap = allTeachers.Where(t => userIds.Contains(t.UserId))
+                .ToDictionary(t => t.UserId);
+
+            var userResponseDtos = new List<UserResponseDto>();
+
+            foreach (var user in pagedUsers)
+            {
+                if (!userRoleMap.TryGetValue(user.UserId, out var userRole))
+                {
+                    continue; // Skip users without roles
+                }
+
+                var response = new UserResponseDto
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Status = user.Status,
+                    ContactNumber = user.ContactNumber,
+                    EmergencyContactNumber = user.EmergencyContactNumber,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt,
+                    CreatedBy = user.CreatedBy,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy,
+                    RoleId = userRole.RoleId,
+                    RoleName = GetRoleName(userRole.RoleId)
+                };
+
+                // Populate role-specific data
+                switch (userRole.RoleId)
+                {
+                    case RoleConstants.Student:
+                        if (studentMap.TryGetValue(user.UserId, out var student))
+                        {
+                            response.Student = new StudentData
+                            {
+                                StudentId = student.StudentId,
+                                YearLevel = student.YearLevel,
+                                Section = student.Section,
+                                Course = student.Course
+                            };
+                        }
+                        break;
+
+                    case RoleConstants.Teacher:
+                        if (teacherMap.TryGetValue(user.UserId, out var teacher))
+                        {
+                            response.Teacher = new TeacherData
+                            {
+                                Department = teacher.Department
+                            };
+                        }
+                        break;
+                }
+
+                userResponseDtos.Add(response);
+            }
+
+            return new PagedResult<UserResponseDto>
+            {
+                Items = userResponseDtos,
+                TotalCount = totalCount,
+                PageNumber = paginationParams.PageNumber,
+                PageSize = paginationParams.PageSize
+            };
+        }
+
+        public async Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync()
+        {
+            var allUsers = await _userRepository.GetAllIncludingArchivedAsync();
+            
+            var activeCount = allUsers.Count(u => u.Status == EntityStatusConstants.Active);
+            var archivedCount = allUsers.Count(u => u.Status == EntityStatusConstants.Archived);
+            var inactiveCount = allUsers.Count(u => u.Status == EntityStatusConstants.Inactive);
+            var totalCount = allUsers.Count;
+
+            return new ArchiveStatisticsDto
+            {
+                EntityType = "User",
+                ActiveCount = activeCount,
+                ArchivedCount = archivedCount,
+                InactiveCount = inactiveCount,
+                TotalCount = totalCount,
+                ArchivePercentage = totalCount > 0 ? (decimal)archivedCount / totalCount * 100 : 0
+            };
+        }
     }
 }

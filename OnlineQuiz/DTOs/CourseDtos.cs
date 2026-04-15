@@ -53,6 +53,11 @@ namespace OnlineQuiz.DTOs
         public int EnrollmentCount { get; set; }
         public int QuizCount { get; set; }
         public int SectionCount { get; set; }
+
+        // Archive information
+        public DateTime? ArchivedAt { get; set; }
+        public int? ArchivedBy { get; set; }
+        public string? ArchivedByName { get; set; }
     }
 
     public class EnrollStudentDto

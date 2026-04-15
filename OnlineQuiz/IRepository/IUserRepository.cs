@@ -15,5 +15,14 @@ namespace OnlineQuiz.IRepository
         Task<User> UpdateAsync(User user);
         Task<bool> DeleteAsync(int userId);
         Task<int> BulkDeleteAsync(List<int> userIds);
+
+        // Archive operations
+        Task<User?> ArchiveAsync(int userId, int archivedBy);
+        Task<User?> UnarchiveAsync(int userId);
+        Task<int> BulkArchiveAsync(List<int> userIds, int archivedBy);
+        Task<int> BulkUnarchiveAsync(List<int> userIds);
+        Task<List<User>> GetArchivedAsync();
+        Task<List<User>> GetAllIncludingArchivedAsync();
+        Task<int> CountArchivedAsync();
     }
 }
