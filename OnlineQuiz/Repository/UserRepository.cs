@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using OnlineQuiz.Utilities;
 
 namespace OnlineQuiz.Repository
 {
@@ -52,7 +53,7 @@ namespace OnlineQuiz.Repository
         {
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
-                .Where(u => u.Status != "Archived")
+                .Where(u => u.Status != EntityStatusConstants.Archived)
                 .Get();
             return result.Models;
         }
@@ -72,7 +73,7 @@ namespace OnlineQuiz.Repository
         {
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
-                .Where(u => u.Status != "Archived")
+                .Where(u => u.Status != EntityStatusConstants.Archived)
                 .Count(Postgrest.Constants.CountType.Exact);
             return result;
         }
@@ -95,7 +96,7 @@ namespace OnlineQuiz.Repository
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
                 .Filter("CreatedAt", Postgrest.Constants.Operator.GreaterThanOrEqual, cutoffDate.ToString("o"))
-                .Where(u => u.Status != "Archived")
+                .Where(u => u.Status != EntityStatusConstants.Archived)
                 .Order("CreatedAt", Postgrest.Constants.Ordering.Descending)
                 .Get();
             return result.Models;
@@ -135,7 +136,7 @@ namespace OnlineQuiz.Repository
             var user = await GetByIdAsync(userId);
             if (user == null) return null;
 
-            user.Status = "Archived";
+            user.Status = EntityStatusConstants.Archived;
             user.ArchivedAt = DateTime.UtcNow;
             user.ArchivedBy = archivedBy;
             user.UpdatedAt = DateTime.UtcNow;
@@ -148,7 +149,7 @@ namespace OnlineQuiz.Repository
             var user = await GetByIdAsync(userId);
             if (user == null) return null;
 
-            user.Status = "Active";
+            user.Status = EntityStatusConstants.Active;
             user.ArchivedAt = null;
             user.ArchivedBy = null;
             user.UpdatedAt = DateTime.UtcNow;
@@ -165,7 +166,7 @@ namespace OnlineQuiz.Repository
 
             foreach (var user in users)
             {
-                user.Status = "Archived";
+                user.Status = EntityStatusConstants.Archived;
                 user.ArchivedAt = DateTime.UtcNow;
                 user.ArchivedBy = archivedBy;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -186,7 +187,7 @@ namespace OnlineQuiz.Repository
 
             foreach (var user in users)
             {
-                user.Status = "Active";
+                user.Status = EntityStatusConstants.Active;
                 user.ArchivedAt = null;
                 user.ArchivedBy = null;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -202,7 +203,7 @@ namespace OnlineQuiz.Repository
         {
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
-                .Where(u => u.Status == "Archived")
+                .Where(u => u.Status == EntityStatusConstants.Archived)
                 .Order("ArchivedAt", Postgrest.Constants.Ordering.Descending)
                 .Get();
             return result.Models;
@@ -219,7 +220,7 @@ namespace OnlineQuiz.Repository
         {
             var client = _supabaseService.GetClient();
             var result = await client.From<User>()
-                .Where(u => u.Status == "Archived")
+                .Where(u => u.Status == EntityStatusConstants.Archived)
                 .Count(Postgrest.Constants.CountType.Exact);
             return result;
         }

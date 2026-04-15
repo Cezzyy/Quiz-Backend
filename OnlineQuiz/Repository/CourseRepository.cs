@@ -1,6 +1,7 @@
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using OnlineQuiz.Utilities;
 using Postgrest;
 
 namespace OnlineQuiz.Repository
@@ -45,7 +46,7 @@ namespace OnlineQuiz.Repository
         public async Task<List<Course>> GetAllAsync()
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.Status != "Archived")
+                .Where(c => c.Status != EntityStatusConstants.Archived)
                 .Get();
             return response.Models;
         }
@@ -78,7 +79,7 @@ namespace OnlineQuiz.Repository
         public async Task<List<Course>> GetByInstructorIdAsync(int instructorId)
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.InstructorUserId == instructorId && c.Status != "Archived")
+                .Where(c => c.InstructorUserId == instructorId && c.Status != EntityStatusConstants.Archived)
                 .Get();
             return response.Models;
         }
@@ -96,7 +97,7 @@ namespace OnlineQuiz.Repository
         public async Task<int> CountAsync()
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.Status != "Archived")
+                .Where(c => c.Status != EntityStatusConstants.Archived)
                 .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
@@ -104,7 +105,7 @@ namespace OnlineQuiz.Repository
         public async Task<int> CountByInstructorAsync(int instructorId)
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.InstructorUserId == instructorId && c.Status != "Archived")
+                .Where(c => c.InstructorUserId == instructorId && c.Status != EntityStatusConstants.Archived)
                 .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
@@ -125,7 +126,7 @@ namespace OnlineQuiz.Repository
             var course = await GetByIdAsync(courseId);
             if (course == null) return null;
 
-            course.Status = "Archived";
+            course.Status = EntityStatusConstants.Archived;
             course.ArchivedAt = DateTime.UtcNow;
             course.ArchivedBy = archivedBy;
             course.UpdatedAt = DateTime.UtcNow;
@@ -138,7 +139,7 @@ namespace OnlineQuiz.Repository
             var course = await GetByIdAsync(courseId);
             if (course == null) return null;
 
-            course.Status = "Active";
+            course.Status = EntityStatusConstants.Active;
             course.ArchivedAt = null;
             course.ArchivedBy = null;
             course.UpdatedAt = DateTime.UtcNow;
@@ -156,7 +157,7 @@ namespace OnlineQuiz.Repository
                 var course = await GetByIdAsync(courseId);
                 if (course != null)
                 {
-                    course.Status = "Archived";
+                    course.Status = EntityStatusConstants.Archived;
                     course.ArchivedAt = DateTime.UtcNow;
                     course.ArchivedBy = archivedBy;
                     course.UpdatedAt = DateTime.UtcNow;
@@ -179,7 +180,7 @@ namespace OnlineQuiz.Repository
                 var course = await GetByIdAsync(courseId);
                 if (course != null)
                 {
-                    course.Status = "Active";
+                    course.Status = EntityStatusConstants.Active;
                     course.ArchivedAt = null;
                     course.ArchivedBy = null;
                     course.UpdatedAt = DateTime.UtcNow;
@@ -195,7 +196,7 @@ namespace OnlineQuiz.Repository
         public async Task<List<Course>> GetArchivedAsync()
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.Status == "Archived")
+                .Where(c => c.Status == EntityStatusConstants.Archived)
                 .Order("ArchivedAt", Constants.Ordering.Descending)
                 .Get();
             return response.Models;
@@ -210,7 +211,7 @@ namespace OnlineQuiz.Repository
         public async Task<int> CountArchivedAsync()
         {
             var response = await _supabaseService.GetClient().From<Course>()
-                .Where(c => c.Status == "Archived")
+                .Where(c => c.Status == EntityStatusConstants.Archived)
                 .Count(Postgrest.Constants.CountType.Exact);
             return response;
         }
