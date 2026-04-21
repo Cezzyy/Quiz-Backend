@@ -346,7 +346,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Force listening on specific IP address for ESP32 connectivity
-builder.WebHost.UseUrls("http://10.35.134.253:5000", "https://10.35.134.253:5001");
+// COMMENTED OUT: Use launchSettings.json or environment variables instead
+// builder.WebHost.UseUrls("http://10.35.134.253:5000", "https://10.35.134.253:5001");
 
 var app = builder.Build();
 
