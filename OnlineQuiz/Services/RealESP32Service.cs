@@ -12,8 +12,9 @@ namespace OnlineQuiz.Services
     {
         private readonly ILogger<RealESP32Service> _logger;
         private readonly ConcurrentDictionary<int, PendingOperation> _pendingOperations;
-        private bool _isConnected;
-        private DateTime _lastActivity;
+        private readonly object _stateLock = new object();
+        private volatile bool _isConnected;
+        private DateTime _lastActivity; // Protected by _stateLock
 
         public event EventHandler<ESP32ResponseDto>? OnEnrollmentCompleted;
         public event EventHandler<ESP32ResponseDto>? OnVerificationCompleted;
@@ -26,7 +27,10 @@ namespace OnlineQuiz.Services
             _logger = logger;
             _pendingOperations = new ConcurrentDictionary<int, PendingOperation>();
             _isConnected = true; // Assume connected (ESP32 will ping to confirm)
-            _lastActivity = DateTime.UtcNow;
+            lock (_stateLock)
+            {
+                _lastActivity = DateTime.UtcNow;
+            }
             
             _logger.LogInformation("RealESP32Service initialized");
         }
@@ -54,9 +58,12 @@ namespace OnlineQuiz.Services
 
                 // In a real implementation with serial/TCP connection, you would send command here
                 // For now, we rely on manual command entry via Serial Monitor
-                _logger.LogWarning("⚠️ MANUAL ACTION REQUIRED: Send 'E {SlotId}' command to ESP32 via Serial Monitor", slotId);
+                _logger.LogWarning("MANUAL ACTION REQUIRED: Send 'E {SlotId}' command to ESP32 via Serial Monitor", slotId);
 
-                _lastActivity = DateTime.UtcNow;
+                lock (_stateLock)
+                {
+                    _lastActivity = DateTime.UtcNow;
+                }
 
                 return await Task.FromResult(new ESP32ResponseDto
                 {
@@ -95,9 +102,12 @@ namespace OnlineQuiz.Services
                 _pendingOperations[slotId] = operation;
 
                 // In a real implementation with serial/TCP connection, you would send command here
-                _logger.LogWarning("⚠️ MANUAL ACTION REQUIRED: Send 'V {SlotId}' command to ESP32 via Serial Monitor", slotId);
+                _logger.LogWarning("MANUAL ACTION REQUIRED: Send 'V {SlotId}' command to ESP32 via Serial Monitor", slotId);
 
-                _lastActivity = DateTime.UtcNow;
+                lock (_stateLock)
+                {
+                    _lastActivity = DateTime.UtcNow;
+                }
 
                 return await Task.FromResult(new ESP32ResponseDto
                 {
@@ -136,8 +146,14 @@ namespace OnlineQuiz.Services
 
         public async Task<BiometricStatusDto> GetDeviceStatusAsync()
         {
+            DateTime lastActivity;
+            lock (_stateLock)
+            {
+                lastActivity = _lastActivity;
+            }
+            
             // Check if device is stale (no activity in 5 minutes)
-            var isStale = (DateTime.UtcNow - _lastActivity).TotalMinutes > 5;
+            var isStale = (DateTime.UtcNow - lastActivity).TotalMinutes > 5;
             
             if (isStale && _isConnected)
             {
@@ -176,7 +192,10 @@ namespace OnlineQuiz.Services
                     eventData.FingerprintId, 
                     eventData.Status);
 
-                _lastActivity = DateTime.UtcNow;
+                lock (_stateLock)
+                {
+                    _lastActivity = DateTime.UtcNow;
+                }
 
                 // Update connection status
                 if (!_isConnected)
@@ -261,7 +280,10 @@ namespace OnlineQuiz.Services
         public async Task<bool> ConnectAsync()
         {
             _isConnected = true;
-            _lastActivity = DateTime.UtcNow;
+            lock (_stateLock)
+            {
+                _lastActivity = DateTime.UtcNow;
+            }
             OnDeviceStatusChanged?.Invoke(this, "connected");
             _logger.LogInformation("ESP32 device connected");
             return await Task.FromResult(true);
