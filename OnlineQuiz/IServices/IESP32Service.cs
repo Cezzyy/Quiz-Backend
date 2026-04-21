@@ -10,6 +10,9 @@ namespace OnlineQuiz.IServices
         Task<ESP32ResponseDto> CancelOperationAsync();
         Task<BiometricStatusDto> GetDeviceStatusAsync();
 
+        // Hardware Event Processing
+        Task ProcessHardwareEventAsync(ESP32HardwareEventDto eventData);
+
         // Events - fired when hardware completes operations
         event EventHandler<ESP32ResponseDto>? OnEnrollmentCompleted;
         event EventHandler<ESP32ResponseDto>? OnVerificationCompleted;

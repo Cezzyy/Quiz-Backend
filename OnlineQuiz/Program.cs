@@ -157,7 +157,7 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IBiometricService, OnlineQuiz.Se
 
 // Register ESP32 Service (Mock for now, swap to real later)
 // MUST be Singleton so events work across the app
-builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.MockESP32Service>();
+builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.RealESP32Service>();
 
 // Register Background Services
 builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();
@@ -345,6 +345,10 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Force listening on specific IP address for ESP32 connectivity
+// COMMENTED OUT: Use launchSettings.json or environment variables instead
+// builder.WebHost.UseUrls("http://10.35.134.253:5000", "https://10.35.134.253:5001");
+
 var app = builder.Build();
 
 // Configure forwarded headers for AWS Elastic Beanstalk
@@ -375,7 +379,8 @@ else
     Console.WriteLine("Swagger/API documentation is DISABLED for security.");
 }
 
-app.UseHttpsRedirection();
+// Commented out for ESP32 HTTP connectivity
+// app.UseHttpsRedirection();
 
 app.UseCors("AllowWebAndMobile");
 
