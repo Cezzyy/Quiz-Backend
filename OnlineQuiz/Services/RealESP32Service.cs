@@ -163,11 +163,12 @@ namespace OnlineQuiz.Services
             var currentMode = "Idle";
             int? activeUserId = null;
             
-            if (_pendingOperations.Any())
+            // Safely get first pending operation atomically
+            var firstOperation = _pendingOperations.Values.FirstOrDefault();
+            if (firstOperation != null)
             {
-                var operation = _pendingOperations.Values.First();
-                currentMode = operation.Type == "enroll" ? "Enrollment" : "Verification";
-                activeUserId = operation.UserId;
+                currentMode = firstOperation.Type == "enroll" ? "Enrollment" : "Verification";
+                activeUserId = firstOperation.UserId;
             }
 
             return await Task.FromResult(new BiometricStatusDto
