@@ -18,12 +18,33 @@ namespace OnlineQuiz.Services
         private readonly Timer _cleanupTimer;
         private const int OperationTimeoutMinutes = 5; // Timeout for pending operations
         private const int CleanupIntervalSeconds = 60; // Run cleanup every minute
+        private const int DeviceStaleMinutes = 5; // Device considered stale after 5 minutes of inactivity
 
         public event EventHandler<ESP32ResponseDto>? OnEnrollmentCompleted;
         public event EventHandler<ESP32ResponseDto>? OnVerificationCompleted;
         public event EventHandler<string>? OnDeviceStatusChanged;
 
-        public bool IsConnected => _isConnected;
+        /// <summary>
+        /// Gets whether the device is connected AND not stale
+        /// A device is considered stale if there's been no activity for 5+ minutes
+        /// </summary>
+        public bool IsConnected
+        {
+            get
+            {
+                if (!_isConnected)
+                    return false;
+
+                DateTime lastActivity;
+                lock (_stateLock)
+                {
+                    lastActivity = _lastActivity;
+                }
+
+                var isStale = (DateTime.UtcNow - lastActivity).TotalMinutes > DeviceStaleMinutes;
+                return !isStale;
+            }
+        }
 
         public RealESP32Service(ILogger<RealESP32Service> logger)
         {
@@ -164,11 +185,11 @@ namespace OnlineQuiz.Services
             }
             
             // Check if device is stale (no activity in 5 minutes)
-            var isStale = (DateTime.UtcNow - lastActivity).TotalMinutes > 5;
+            var isStale = (DateTime.UtcNow - lastActivity).TotalMinutes > DeviceStaleMinutes;
             
             if (isStale && _isConnected)
             {
-                _logger.LogWarning("Device appears stale. No activity in 5+ minutes.");
+                _logger.LogWarning("Device appears stale. No activity in {Minutes}+ minutes.", DeviceStaleMinutes);
             }
 
             var currentMode = "Idle";
@@ -184,7 +205,7 @@ namespace OnlineQuiz.Services
 
             return await Task.FromResult(new BiometricStatusDto
             {
-                IsConnected = _isConnected && !isStale,
+                IsConnected = IsConnected, // Use the property which includes stale check
                 CurrentMode = currentMode,
                 ActiveUserId = activeUserId
             });
