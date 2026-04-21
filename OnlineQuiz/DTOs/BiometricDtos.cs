@@ -44,6 +44,7 @@ namespace OnlineQuiz.DTOs
         public string CurrentMode { get; set; } = "Idle"; // Idle, Enrollment, Verification
         public int? ActiveUserId { get; set; }
         public string? ActiveUserName { get; set; }
+        public DateTime? LastActivity { get; set; }
     }
 
     public class BiometricLogDto
@@ -78,6 +79,23 @@ namespace OnlineQuiz.DTOs
         public string Message { get; set; } = string.Empty;
         public int? ErrorCode { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// DTO for receiving hardware events from ESP32 device
+    /// </summary>
+    public class ESP32HardwareEventDto
+    {
+        [Required]
+        public int FingerprintId { get; set; }
+        
+        [Required]
+        public string DeviceId { get; set; } = string.Empty;
+        
+        [Required]
+        public string Status { get; set; } = string.Empty; // "Success" or "Failed"
+        
+        public string? ErrorMessage { get; set; }
     }
 
     // =====================================================
