@@ -8,13 +8,16 @@ namespace OnlineQuiz.Services
     /// Real ESP32 service implementation for hardware fingerprint sensor
     /// Manages communication with ESP32 device via HTTP events
     /// </summary>
-    public class RealESP32Service : IESP32Service
+    public class RealESP32Service : IESP32Service, IDisposable
     {
         private readonly ILogger<RealESP32Service> _logger;
         private readonly ConcurrentDictionary<int, PendingOperation> _pendingOperations;
         private readonly object _stateLock = new object();
         private volatile bool _isConnected;
         private DateTime _lastActivity; // Protected by _stateLock
+        private readonly Timer _cleanupTimer;
+        private const int OperationTimeoutMinutes = 5; // Timeout for pending operations
+        private const int CleanupIntervalSeconds = 60; // Run cleanup every minute
 
         public event EventHandler<ESP32ResponseDto>? OnEnrollmentCompleted;
         public event EventHandler<ESP32ResponseDto>? OnVerificationCompleted;
@@ -32,7 +35,15 @@ namespace OnlineQuiz.Services
                 _lastActivity = DateTime.UtcNow;
             }
             
-            _logger.LogInformation("RealESP32Service initialized");
+            // Initialize cleanup timer to prevent memory leaks
+            _cleanupTimer = new Timer(
+                CleanupStaleOperations,
+                null,
+                TimeSpan.FromSeconds(CleanupIntervalSeconds),
+                TimeSpan.FromSeconds(CleanupIntervalSeconds)
+            );
+            
+            _logger.LogInformation("RealESP32Service initialized with automatic cleanup every {Interval}s", CleanupIntervalSeconds);
         }
 
         // =====================================================
@@ -299,7 +310,79 @@ namespace OnlineQuiz.Services
             // Clear pending operations
             _pendingOperations.Clear();
             
+            // Dispose cleanup timer
+            _cleanupTimer?.Dispose();
+            
             await Task.CompletedTask;
+        }
+
+        // =====================================================
+        // CLEANUP & MAINTENANCE
+        // =====================================================
+
+        /// <summary>
+        /// Periodically removes stale pending operations to prevent memory leaks
+        /// </summary>
+        private void CleanupStaleOperations(object? state)
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var timeoutThreshold = TimeSpan.FromMinutes(OperationTimeoutMinutes);
+                var removedCount = 0;
+
+                // Find and remove stale operations
+                var staleSlots = _pendingOperations
+                    .Where(kvp => (now - kvp.Value.StartedAt) > timeoutThreshold)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                foreach (var slotId in staleSlots)
+                {
+                    if (_pendingOperations.TryRemove(slotId, out var operation))
+                    {
+                        removedCount++;
+                        var age = (now - operation.StartedAt).TotalMinutes;
+                        
+                        _logger.LogWarning(
+                            "Removed stale pending operation: Type={Type}, SlotId={SlotId}, UserId={UserId}, Age={Age:F1}min",
+                            operation.Type,
+                            operation.SlotId,
+                            operation.UserId,
+                            age
+                        );
+
+                        // Trigger failure event for the timed-out operation
+                        var timeoutResponse = new ESP32ResponseDto
+                        {
+                            Success = false,
+                            SlotId = operation.SlotId,
+                            UserId = operation.UserId,
+                            Message = $"Operation timed out after {OperationTimeoutMinutes} minutes",
+                            ErrorCode = -1 // Timeout error code
+                        };
+
+                        // Notify listeners about the timeout
+                        if (operation.Type == "enroll")
+                        {
+                            OnEnrollmentCompleted?.Invoke(this, timeoutResponse);
+                        }
+                        else if (operation.Type == "verify")
+                        {
+                            OnVerificationCompleted?.Invoke(this, timeoutResponse);
+                        }
+                    }
+                }
+
+                if (removedCount > 0)
+                {
+                    _logger.LogInformation("Cleanup completed: Removed {Count} stale operation(s)", removedCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during cleanup of stale operations");
+            }
         }
 
         // =====================================================
@@ -312,6 +395,33 @@ namespace OnlineQuiz.Services
             public int SlotId { get; set; }
             public int UserId { get; set; }
             public DateTime StartedAt { get; set; }
+        }
+
+        // =====================================================
+        // DISPOSE PATTERN
+        // =====================================================
+
+        private bool _disposed = false;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _cleanupTimer?.Dispose();
+                    _pendingOperations.Clear();
+                    _logger.LogInformation("RealESP32Service disposed");
+                }
+                _disposed = true;
+            }
         }
     }
 }
