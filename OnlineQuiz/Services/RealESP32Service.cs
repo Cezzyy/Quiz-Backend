@@ -331,9 +331,6 @@ namespace OnlineQuiz.Services
             // Clear pending operations
             _pendingOperations.Clear();
             
-            // Dispose cleanup timer
-            _cleanupTimer?.Dispose();
-            
             await Task.CompletedTask;
         }
 
