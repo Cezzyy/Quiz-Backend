@@ -13,7 +13,14 @@ namespace OnlineQuiz.Attributes
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class ApiKeyAuthAttribute : Attribute, IAsyncActionFilter
     {
-        private const string ApiKeyHeaderName = "X-API-Key";
+        private readonly string _headerName;
+        private readonly string _configKey;
+
+        public ApiKeyAuthAttribute(string headerName = "X-API-Key", string configKey = "ESP32:ApiKey")
+        {
+            _headerName = headerName;
+            _configKey = configKey;
+        }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
@@ -22,7 +29,7 @@ namespace OnlineQuiz.Attributes
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<ApiKeyAuthAttribute>>();
 
             // Check if API key exists in header
-            if (!context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeaderName, out var extractedApiKey))
+            if (!context.HttpContext.Request.Headers.TryGetValue(_headerName, out var extractedApiKey))
             {
                 logger.LogWarning("API key missing from request. IP: {IP}", context.HttpContext.Connection.RemoteIpAddress);
                 context.Result = new UnauthorizedObjectResult(new { message = "API key is missing" });
@@ -30,11 +37,11 @@ namespace OnlineQuiz.Attributes
             }
 
             // Get expected API key from configuration
-            var expectedApiKey = configuration["ESP32:ApiKey"];
+            var expectedApiKey = configuration[_configKey];
             
             if (string.IsNullOrEmpty(expectedApiKey))
             {
-                logger.LogError("ESP32:ApiKey is not configured in appsettings.json or environment variables");
+                logger.LogError("{ConfigKey} is not configured in appsettings.json or environment variables", _configKey);
                 context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
                 return;
             }

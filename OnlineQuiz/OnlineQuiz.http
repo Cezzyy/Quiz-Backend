@@ -1,6 +1,1056 @@
-@OnlineQuiz_HostAddress = http://localhost:5099
+@OnlineQuiz_HostAddress = http://localhost:5157
 
 GET {{OnlineQuiz_HostAddress}}/api/user
 Accept: application/json
 
 ###
+
+# ==========================================
+# AUTH ENDPOINTS
+# ==========================================
+
+### Login to get JWT Token
+# @name login
+POST {{OnlineQuiz_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@aclc.edu",
+  "password": "admin123"
+}
+
+###
+
+### Verify Me (Current User Details)
+GET {{OnlineQuiz_HostAddress}}/api/auth/verify-me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Logout
+POST {{OnlineQuiz_HostAddress}}/api/auth/logout
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Change Password
+POST {{OnlineQuiz_HostAddress}}/api/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "OldPassword": "admin122",
+  "newPassword": "admin123"
+}
+
+###
+
+# ==========================================
+# BIOMETRIC ENDPOINTS
+# ==========================================
+
+# Biometric JWT Token
+@token = your_jwt_token_here
+@userId = 1
+
+### Start fingerprint enrollment for a user (Teacher/Admin only)
+POST {{OnlineQuiz_HostAddress}}/api/biometric/enroll/{{userId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Remove fingerprint enrollment for a user (Teacher/Admin only)
+DELETE {{OnlineQuiz_HostAddress}}/api/biometric/unenroll/1
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Start fingerprint verification for a user 
+POST {{OnlineQuiz_HostAddress}}/api/biometric/verify/1
+# Alternatively with quizId
+# POST {{OnlineQuiz_HostAddress}}/api/biometric/verify/{{userId}}?quizId=2
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Get ESP32 device status
+GET {{OnlineQuiz_HostAddress}}/api/biometric/status
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Get available fingerprint slots (Teacher/Admin only)
+GET {{OnlineQuiz_HostAddress}}/api/biometric/available-slots
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Check if a user has fingerprint enrolled
+GET {{OnlineQuiz_HostAddress}}/api/biometric/is-enrolled/{{userId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Get biometric audit logs
+GET {{OnlineQuiz_HostAddress}}/api/biometric/logs?page=1&pageSize=10
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Cancel current biometric operation
+POST {{OnlineQuiz_HostAddress}}/api/biometric/cancel
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+
+# ------------------------------------------
+# ActivityLogController
+# ------------------------------------------
+
+### GET /api/activitylog
+GET {{OnlineQuiz_HostAddress}}/api/activitylog
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/activitylog/{id}
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/1
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/activitylog/user/{userId}
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/user/1
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/activitylog/me
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/activitylog/statistics
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/statistics
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/activitylog
+POST {{OnlineQuiz_HostAddress}}/api/activitylog
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "activityLogId": 1125,
+    "userId": 1,
+    "userFullName": "ACLC Administrator 1",
+    "userEmail": "admin@aclc.edu",
+    "action": "VERIFY",
+    "entity": "Biometric",
+    "entityId": 1,
+    "description": "Started fingerprint verification for user 1",
+    "ipAddress": "127.0.0.1",
+    "userAgent": "",
+}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# AnalyticsController
+# ------------------------------------------
+
+### GET /api/analytics/admin/dashboard
+GET {{OnlineQuiz_HostAddress}}/api/analytics/admin/dashboard
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/analytics/teacher/dashboard
+GET {{OnlineQuiz_HostAddress}}/api/analytics/teacher/dashboard
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/analytics/student/dashboard
+GET {{OnlineQuiz_HostAddress}}/api/analytics/student/dashboard
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/analytics/course/{courseId}
+GET {{OnlineQuiz_HostAddress}}/api/analytics/course/{courseId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# AnswerController
+# ------------------------------------------
+
+### POST /api/answer
+POST {{OnlineQuiz_HostAddress}}/api/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/answer/bulk
+POST {{OnlineQuiz_HostAddress}}/api/answer/bulk
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/answer/attempt/{attemptId}
+GET {{OnlineQuiz_HostAddress}}/api/answer/attempt/{attemptId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/answer/{answerId}
+PUT {{OnlineQuiz_HostAddress}}/api/answer/{answerId}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/answer/{answerId}
+DELETE {{OnlineQuiz_HostAddress}}/api/answer/{answerId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# AttemptController
+# ------------------------------------------
+
+### POST /api/attempt/start
+POST {{OnlineQuiz_HostAddress}}/api/attempt/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/attempt/{attemptId}
+GET {{OnlineQuiz_HostAddress}}/api/attempt/{attemptId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/attempt/quiz/{quizId}
+GET {{OnlineQuiz_HostAddress}}/api/attempt/quiz/{quizId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/attempt/student/{studentId}
+GET {{OnlineQuiz_HostAddress}}/api/attempt/student/{studentId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/attempt/quiz/{quizId}/paged
+GET {{OnlineQuiz_HostAddress}}/api/attempt/quiz/{quizId}/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/attempt/student/{studentId}/paged
+GET {{OnlineQuiz_HostAddress}}/api/attempt/student/{studentId}/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/attempt/{attemptId}/submit
+PUT {{OnlineQuiz_HostAddress}}/api/attempt/{attemptId}/submit
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/attempt/{attemptId}
+DELETE {{OnlineQuiz_HostAddress}}/api/attempt/{attemptId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/attempt/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/attempt/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/attempt/export
+GET {{OnlineQuiz_HostAddress}}/api/attempt/export
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# CourseController
+# ------------------------------------------
+
+### POST /api/course
+POST {{OnlineQuiz_HostAddress}}/api/course
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/course/{courseId}
+GET {{OnlineQuiz_HostAddress}}/api/course/{courseId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course
+GET {{OnlineQuiz_HostAddress}}/api/course
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/teacher/{teacherId}
+GET {{OnlineQuiz_HostAddress}}/api/course/teacher/{teacherId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/student/{studentId}
+GET {{OnlineQuiz_HostAddress}}/api/course/student/{studentId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/paged
+GET {{OnlineQuiz_HostAddress}}/api/course/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/teacher/{teacherId}/paged
+GET {{OnlineQuiz_HostAddress}}/api/course/teacher/{teacherId}/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/student/{studentId}/paged
+GET {{OnlineQuiz_HostAddress}}/api/course/student/{studentId}/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/course/enroll
+POST {{OnlineQuiz_HostAddress}}/api/course/enroll
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/course/{courseId}/enrollments
+GET {{OnlineQuiz_HostAddress}}/api/course/{courseId}/enrollments
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/course/{courseId}
+PUT {{OnlineQuiz_HostAddress}}/api/course/{courseId}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/course/{courseId}
+DELETE {{OnlineQuiz_HostAddress}}/api/course/{courseId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/course/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/course/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/course/{courseId}/archive
+POST {{OnlineQuiz_HostAddress}}/api/course/{courseId}/archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/course/{courseId}/unarchive
+POST {{OnlineQuiz_HostAddress}}/api/course/{courseId}/unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/course/bulk-archive
+POST {{OnlineQuiz_HostAddress}}/api/course/bulk-archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/course/bulk-unarchive
+POST {{OnlineQuiz_HostAddress}}/api/course/bulk-unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/course/archived
+GET {{OnlineQuiz_HostAddress}}/api/course/archived
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/archived/paged
+GET {{OnlineQuiz_HostAddress}}/api/course/archived/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/course/archive-statistics
+GET {{OnlineQuiz_HostAddress}}/api/course/archive-statistics
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# EnrollmentController
+# ------------------------------------------
+
+### POST /api/enrollment
+POST {{OnlineQuiz_HostAddress}}/api/enrollment
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/enrollment/course/{courseId}
+GET {{OnlineQuiz_HostAddress}}/api/enrollment/course/{courseId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/enrollment/student/{studentId}
+GET {{OnlineQuiz_HostAddress}}/api/enrollment/student/{studentId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/enrollment/course/{courseId}/student/{studentId}
+DELETE {{OnlineQuiz_HostAddress}}/api/enrollment/course/{courseId}/student/{studentId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/enrollment/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/enrollment/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# ExportImportLogController
+# ------------------------------------------
+
+### POST /api/exportimportlog
+POST {{OnlineQuiz_HostAddress}}/api/exportimportlog
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/exportimportlog/{id}
+GET {{OnlineQuiz_HostAddress}}/api/exportimportlog/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/exportimportlog/me
+GET {{OnlineQuiz_HostAddress}}/api/exportimportlog/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/exportimportlog/user/{userId}
+GET {{OnlineQuiz_HostAddress}}/api/exportimportlog/user/{userId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/exportimportlog/{id}
+PUT {{OnlineQuiz_HostAddress}}/api/exportimportlog/{id}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/exportimportlog/{id}
+DELETE {{OnlineQuiz_HostAddress}}/api/exportimportlog/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# HealthController
+# ------------------------------------------
+
+### GET /api/health
+GET {{OnlineQuiz_HostAddress}}/api/health
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### Ping
+GET {{OnlineQuiz_HostAddress}}/api/health/ping
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# ManualGradingController
+# ------------------------------------------
+
+### POST /api/manualgrading/answers/{attemptAnswerId}/grade
+POST {{OnlineQuiz_HostAddress}}/api/manualgrading/answers/{attemptAnswerId}/grade
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/manualgrading/attempts/{attemptId}/grade-bulk
+POST {{OnlineQuiz_HostAddress}}/api/manualgrading/attempts/{attemptId}/grade-bulk
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/manualgrading/quiz/{quizId}/pending
+GET {{OnlineQuiz_HostAddress}}/api/manualgrading/quiz/{quizId}/pending
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/manualgrading/pending
+GET {{OnlineQuiz_HostAddress}}/api/manualgrading/pending
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/manualgrading/attempts/{attemptId}/recalculate-score
+POST {{OnlineQuiz_HostAddress}}/api/manualgrading/attempts/{attemptId}/recalculate-score
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# NotificationController
+# ------------------------------------------
+
+### GET /api/notification
+GET {{OnlineQuiz_HostAddress}}/api/notification
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/notification/{id}
+GET {{OnlineQuiz_HostAddress}}/api/notification/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/notification/{id}/read
+PUT {{OnlineQuiz_HostAddress}}/api/notification/{id}/read
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### PUT /api/notification/read-all
+PUT {{OnlineQuiz_HostAddress}}/api/notification/read-all
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/notification/{id}
+DELETE {{OnlineQuiz_HostAddress}}/api/notification/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/notification
+POST {{OnlineQuiz_HostAddress}}/api/notification
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/notification/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/notification/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# QuizController
+# ------------------------------------------
+
+### POST /api/quiz
+POST {{OnlineQuiz_HostAddress}}/api/quiz
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/quiz/course/{courseId}
+GET {{OnlineQuiz_HostAddress}}/api/quiz/course/{courseId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/quiz/course/{courseId}/paged
+GET {{OnlineQuiz_HostAddress}}/api/quiz/course/{courseId}/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/quiz/{quizId}
+GET {{OnlineQuiz_HostAddress}}/api/quiz/{quizId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/quiz/{quizId}
+PUT {{OnlineQuiz_HostAddress}}/api/quiz/{quizId}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/quiz/{quizId}
+DELETE {{OnlineQuiz_HostAddress}}/api/quiz/{quizId}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/quiz/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/quiz/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/quiz/{quizId}/archive
+POST {{OnlineQuiz_HostAddress}}/api/quiz/{quizId}/archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/quiz/{quizId}/unarchive
+POST {{OnlineQuiz_HostAddress}}/api/quiz/{quizId}/unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/quiz/bulk-archive
+POST {{OnlineQuiz_HostAddress}}/api/quiz/bulk-archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/quiz/bulk-unarchive
+POST {{OnlineQuiz_HostAddress}}/api/quiz/bulk-unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/quiz/course/{courseId}/archived
+GET {{OnlineQuiz_HostAddress}}/api/quiz/course/{courseId}/archived
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/quiz/course/{courseId}/archived/paged
+GET {{OnlineQuiz_HostAddress}}/api/quiz/course/{courseId}/archived/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/quiz/archive-statistics
+GET {{OnlineQuiz_HostAddress}}/api/quiz/archive-statistics
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# ------------------------------------------
+# UserController
+# ------------------------------------------
+
+### POST /api/user
+POST {{OnlineQuiz_HostAddress}}/api/user
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/user
+GET {{OnlineQuiz_HostAddress}}/api/user
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/user/paged
+GET {{OnlineQuiz_HostAddress}}/api/user/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/user/{id}
+GET {{OnlineQuiz_HostAddress}}/api/user/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### PUT /api/user/{id}
+PUT {{OnlineQuiz_HostAddress}}/api/user/{id}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### DELETE /api/user/{id}
+DELETE {{OnlineQuiz_HostAddress}}/api/user/{id}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### DELETE /api/user/bulk
+DELETE {{OnlineQuiz_HostAddress}}/api/user/bulk
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### POST /api/user/bulk-import
+POST {{OnlineQuiz_HostAddress}}/api/user/bulk-import
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./users.xlsx
+--WebAppBoundary--
+Accept: application/json
+
+###
+
+### PUT /api/user/{id}/reset-password
+PUT {{OnlineQuiz_HostAddress}}/api/user/{id}/reset-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/user/{id}/archive
+POST {{OnlineQuiz_HostAddress}}/api/user/{id}/archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/user/{id}/unarchive
+POST {{OnlineQuiz_HostAddress}}/api/user/{id}/unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/user/bulk-archive
+POST {{OnlineQuiz_HostAddress}}/api/user/bulk-archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### POST /api/user/bulk-unarchive
+POST {{OnlineQuiz_HostAddress}}/api/user/bulk-unarchive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  // Add request body here
+}
+Accept: application/json
+
+###
+
+### GET /api/user/archived
+GET {{OnlineQuiz_HostAddress}}/api/user/archived
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/user/archived/paged
+GET {{OnlineQuiz_HostAddress}}/api/user/archived/paged
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+### GET /api/user/archive-statistics
+GET {{OnlineQuiz_HostAddress}}/api/user/archive-statistics
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
