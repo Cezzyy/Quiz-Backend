@@ -234,5 +234,16 @@ namespace OnlineQuiz.Services
                 ActiveUserId = _activeUserId
             });
         }
+
+        // =====================================================
+        // HARDWARE EVENT PROCESSING
+        // =====================================================
+
+        public Task ProcessHardwareEventAsync(ESP32HardwareEventDto eventData)
+        {
+            // Mock service doesn't receive hardware events since it simulates them internally
+            _logger.LogWarning("Mock ESP32: ProcessHardwareEventAsync called but mock service simulates events internally");
+            return Task.CompletedTask;
+        }
     }
 }
