@@ -13,5 +13,6 @@ namespace OnlineQuiz.IRepository
         Task<Dictionary<int, int>> CountSectionsByCourseIdsAsync(List<int> courseIds);
         Task<int> BulkDeleteByIdsAsync(List<int> enrollmentIds);
         Task<int> BulkDeleteByCourseAndStudentsAsync(int courseId, List<int> studentIds);
+        Task<bool> DeleteByCourseAndStudentAsync(int courseId, int studentId);
     }
 }
