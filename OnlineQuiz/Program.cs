@@ -155,9 +155,17 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IExportImportLogService, OnlineQ
 builder.Services.AddScoped<OnlineQuiz.IServices.IManualGradingService, OnlineQuiz.Services.ManualGradingService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IBiometricService, OnlineQuiz.Services.BiometricService>();
 
-// Register ESP32 Service (Mock for now, swap to real later)
+// Register ESP32 Service (Mock or Real based on configuration)
 // MUST be Singleton so events work across the app
-builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.MockESP32Service>();
+var useMockESP32 = builder.Configuration.GetValue<bool>("Biometric:UseMockESP32");
+if (useMockESP32)
+{
+    builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.MockESP32Service>();
+}
+else
+{
+    builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.HttpESP32Service>();
+}
 
 // Register Background Services
 builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();
