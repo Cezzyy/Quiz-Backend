@@ -11,6 +11,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Services
 {
+    [Collection("MapsterWarmup")]
     public class NotificationServiceTests
     {
         // In-memory fakes
@@ -218,19 +219,18 @@ namespace OnlineQuiz.Tests.Services
             {
                 var dict = new Dictionary<int, int>();
                 foreach (var cid in courseIds)
-                {
                     dict[cid] = _store.Values.Count(e => e.CourseId == cid);
-                }
                 return Task.FromResult(dict);
             }
+
+            public Task<Dictionary<int, int>> CountSectionsByCourseIdsAsync(List<int> courseIds)
+                => Task.FromResult(courseIds.ToDictionary(id => id, _ => 0));
 
             public Task<int> BulkDeleteByIdsAsync(List<int> enrollmentIds)
             {
                 var count = 0;
                 foreach (var id in enrollmentIds)
-                {
-                    if (awaitDelete(id)) count++;
-                }
+                    if (DeleteById(id)) count++;
                 return Task.FromResult(count);
             }
 
@@ -242,13 +242,11 @@ namespace OnlineQuiz.Tests.Services
                     .ToList();
                 var count = 0;
                 foreach (var id in toDelete)
-                {
-                    if (awaitDelete(id)) count++;
-                }
+                    if (DeleteById(id)) count++;
                 return Task.FromResult(count);
             }
 
-            private bool awaitDelete(int enrollmentId)
+            private bool DeleteById(int enrollmentId)
             {
                 if (!_store.TryGetValue(enrollmentId, out var e)) return false;
                 _store.Remove(enrollmentId);

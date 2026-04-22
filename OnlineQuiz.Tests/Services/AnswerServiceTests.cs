@@ -10,6 +10,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Services
 {
+    [Collection("MapsterWarmup")]
     public class AnswerServiceTests
     {
         private class InMemoryAttemptRepository : IAttemptRepository
@@ -25,6 +26,7 @@ namespace OnlineQuiz.Tests.Services
             public Task<Attempt> CreateAsync(Attempt attempt) => Task.FromResult(Seed(attempt));
             public Task<Attempt?> GetByIdAsync(int attemptId) { _store.TryGetValue(attemptId, out var a); return Task.FromResult(a != null ? Clone(a) : null); }
             public Task<List<Attempt>> GetByQuizIdAsync(int quizId) => Task.FromResult(_store.Values.Where(a => a.QuizId == quizId).Select(Clone).ToList());
+            public Task<List<Attempt>> GetByQuizIdsAsync(List<int> quizIds) => Task.FromResult(_store.Values.Where(a => quizIds.Contains(a.QuizId)).Select(Clone).ToList());
             public Task<List<Attempt>> GetByStudentIdAsync(int studentId) => Task.FromResult(_store.Values.Where(a => a.UserId == studentId).Select(Clone).ToList());
             public Task<List<Attempt>> GetByQuizIdAndUserIdAsync(int quizId, int userId) => Task.FromResult(_store.Values.Where(a => a.QuizId == quizId && a.UserId == userId).Select(Clone).ToList());
             public Task<Attempt> UpdateAsync(Attempt attempt) { _store[attempt.AttemptId] = Clone(attempt); return Task.FromResult(Clone(attempt)); }
@@ -53,6 +55,10 @@ namespace OnlineQuiz.Tests.Services
             public Task<List<AttemptAnswer>> GetByAttemptIdAsync(int attemptId) => Task.FromResult(_store.Values.Where(a => a.AttemptId == attemptId).Select(Clone).ToList());
             public Task<AttemptAnswer> UpdateAsync(AttemptAnswer answer) { _store[answer.AttemptAnswerId] = Clone(answer); return Task.FromResult(Clone(answer)); }
             public Task<bool> DeleteAsync(int answerId) => Task.FromResult(_store.Remove(answerId));
+            public Task<List<AttemptAnswer>> GetByAttemptIdsAsync(List<int> attemptIds)
+                => Task.FromResult(_store.Values.Where(a => attemptIds.Contains(a.AttemptId)).Select(Clone).ToList());
+            public Task<List<AttemptAnswer>> GetByIdsAsync(List<int> answerIds)
+                => Task.FromResult(_store.Values.Where(a => answerIds.Contains(a.AttemptAnswerId)).Select(Clone).ToList());
             private static AttemptAnswer Clone(AttemptAnswer a) => new AttemptAnswer { AttemptAnswerId = a.AttemptAnswerId, AttemptId = a.AttemptId, QuestionId = a.QuestionId, ChoiceId = a.ChoiceId, FreeText = a.FreeText, IsCorrect = a.IsCorrect };
         }
 
@@ -81,6 +87,22 @@ namespace OnlineQuiz.Tests.Services
             public Task<List<Quiz>> GetByCourseIdsAsync(List<int> courseIds) => Task.FromResult(_quizzes.Values.Where(q => courseIds.Contains(q.CourseId)).Select(Clone).ToList());
             public Task<int> CountByCourseIdsAsync(List<int> courseIds) => Task.FromResult(_quizzes.Values.Count(q => courseIds.Contains(q.CourseId)));
             public Task<int> BulkDeleteAsync(List<int> quizIds) => Task.FromResult(0);
+            public Task<List<Question>> GetQuestionsByQuizIdsAsync(List<int> quizIds)
+            {
+                var result = new List<Question>();
+                foreach (var qid in quizIds)
+                    if (_questions.TryGetValue(qid, out var qs)) result.AddRange(qs.Select(Clone));
+                return Task.FromResult(result);
+            }
+            // Archive stubs
+            public Task<Quiz?> ArchiveAsync(int quizId, int archivedBy) => Task.FromResult<Quiz?>(null);
+            public Task<Quiz?> UnarchiveAsync(int quizId) => Task.FromResult<Quiz?>(null);
+            public Task<int> BulkArchiveAsync(List<int> quizIds, int archivedBy) => Task.FromResult(0);
+            public Task<int> BulkUnarchiveAsync(List<int> quizIds) => Task.FromResult(0);
+            public Task<List<Quiz>> GetArchivedAsync() => Task.FromResult(new List<Quiz>());
+            public Task<List<Quiz>> GetArchivedByCourseIdAsync(int courseId) => Task.FromResult(new List<Quiz>());
+            public Task<List<Quiz>> GetAllIncludingArchivedAsync() => Task.FromResult(_quizzes.Values.Select(Clone).ToList());
+            public Task<int> CountArchivedAsync() => Task.FromResult(0);
             private static Quiz Clone(Quiz q) => new Quiz { QuizId = q.QuizId, CourseId = q.CourseId, Title = q.Title, DueAt = q.DueAt, TimeLimitMinutes = q.TimeLimitMinutes, IsPublished = q.IsPublished };
             private static Question Clone(Question q) => new Question { QuestionId = q.QuestionId, QuizId = q.QuizId, Body = q.Body, Type = q.Type, Points = q.Points };
         }
@@ -100,6 +122,14 @@ namespace OnlineQuiz.Tests.Services
             public Task<User> UpdateAsync(User user) { _store[user.UserId] = Clone(user); return Task.FromResult(Clone(user)); }
             public Task<bool> DeleteAsync(int userId) => Task.FromResult(_store.Remove(userId));
             public Task<int> BulkDeleteAsync(List<int> userIds) => Task.FromResult(0);
+            // Archive stubs
+            public Task<User?> ArchiveAsync(int userId, int archivedBy) => Task.FromResult<User?>(null);
+            public Task<User?> UnarchiveAsync(int userId) => Task.FromResult<User?>(null);
+            public Task<int> BulkArchiveAsync(List<int> userIds, int archivedBy) => Task.FromResult(0);
+            public Task<int> BulkUnarchiveAsync(List<int> userIds) => Task.FromResult(0);
+            public Task<List<User>> GetArchivedAsync() => Task.FromResult(new List<User>());
+            public Task<List<User>> GetAllIncludingArchivedAsync() => Task.FromResult(_store.Values.Select(Clone).ToList());
+            public Task<int> CountArchivedAsync() => Task.FromResult(0);
             private static User Clone(User u) => new User { UserId = u.UserId, Email = u.Email, FullName = u.FullName, PasswordHash = u.PasswordHash, CreatedAt = u.CreatedAt, UpdatedAt = u.UpdatedAt };
         }
 
