@@ -35,26 +35,13 @@ namespace OnlineQuiz.Controllers
             try
             {
                 // Validate against authenticated user identity
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) 
-                               ?? User.FindFirst("id") 
-                               ?? User.FindFirst("UserId");
-                
-                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+                if (!this.TryGetAuthenticatedUserId(out int userId))
                 {
-                    // Override the EnrolledBy field to ensure it matches the authenticated user
-                    enrollStudentDto.EnrolledBy = userId;
+                    return Unauthorized(new { error = "User identity could not be verified" });
                 }
-                else
-                {
-                    // If we can't identify the user, we should probably fail or at least warn.
-                    // For now, if no auth is present (dev mode?), we might skip, but the requirement is strict.
-                    // Assuming auth is required for this endpoint:
-                    // return Unauthorized(new { error = "User identity could not be verified" });
-                    
-                    // However, if the project is in a state where auth isn't fully wired, this might break testing.
-                    // Given the prompt "Validate inputs against the authenticated user's identity", I will enforce it.
-                     return Unauthorized(new { error = "User identity could not be verified" });
-                }
+
+                // Override the EnrolledBy field to ensure it matches the authenticated user
+                enrollStudentDto.EnrolledBy = userId;
 
                 var enrollment = await _courseService.EnrollStudentAsync(enrollStudentDto);
 
@@ -158,21 +145,26 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
-        /// Remove a student from a course (Teacher only - must be assigned to the course)
+        /// Remove a student from a course (Teacher/Admin - teachers must be assigned to the course)
         /// </summary>
         /// <param name="courseId">Course ID</param>
         /// <param name="studentId">Student ID</param>
-        /// <param name="teacherId">Teacher ID (for authorization)</param>
         /// <returns>No content on success</returns>
         [HttpDelete("course/{courseId}/student/{studentId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> UnenrollStudent(int courseId, int studentId, [FromQuery] int teacherId)
+        public async Task<ActionResult> UnenrollStudent(int courseId, int studentId)
         {
             try
             {
-                var result = await _courseService.UnenrollStudentAsync(courseId, studentId, teacherId);
+                // Extract authenticated user ID from JWT token
+                if (!this.TryGetAuthenticatedUserId(out int userId))
+                {
+                    return Unauthorized(new { error = "User identity could not be verified" });
+                }
+
+                var result = await _courseService.UnenrollStudentAsync(courseId, studentId, userId);
                 if (!result)
                 {
                     return NotFound(new { error = "Enrollment not found" });
@@ -183,7 +175,7 @@ namespace OnlineQuiz.Controllers
                 {
                     await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        UserId = teacherId,
+                        UserId = userId,
                         Action = ActivityLogConstants.Actions.UNENROLL,
                         Entity = ActivityLogConstants.Entities.Enrollment,
                         // We don't have the enrollment ID here easily without fetching first, so we use 0 or leave it
@@ -211,18 +203,24 @@ namespace OnlineQuiz.Controllers
         }
 
         /// <summary>
-        /// Bulk unenroll students (Course instructor)
+        /// Bulk unenroll students (Course instructor/Admin)
         /// </summary>
         [HttpDelete("bulk")]
         [EnableRateLimiting("bulk-operations")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult> BulkUnenrollStudents([FromBody] BulkDeleteEnrollmentsDto dto, [FromQuery] int teacherId)
+        public async Task<ActionResult> BulkUnenrollStudents([FromBody] BulkDeleteEnrollmentsDto dto)
         {
             try
             {
-                var deletedCount = await _courseService.BulkUnenrollStudentsAsync(dto, teacherId);
+                // Extract authenticated user ID from JWT token
+                if (!this.TryGetAuthenticatedUserId(out int userId))
+                {
+                    return Unauthorized(new { error = "User identity could not be verified" });
+                }
+
+                var deletedCount = await _courseService.BulkUnenrollStudentsAsync(dto, userId);
                 
                 // Log the BULK_DELETE activity
                 try
@@ -233,7 +231,7 @@ namespace OnlineQuiz.Controllers
 
                     await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        UserId = teacherId,
+                        UserId = userId,
                         Action = ActivityLogConstants.Actions.UNENROLL,
                         Entity = ActivityLogConstants.Entities.Enrollment,
                         Description = description,

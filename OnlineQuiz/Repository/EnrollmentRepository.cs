@@ -122,5 +122,25 @@ namespace OnlineQuiz.Repository
             
             return enrollmentIds.Count;
         }
+
+        public async Task<bool> DeleteByCourseAndStudentAsync(int courseId, int studentId)
+        {
+            // First check if the enrollment exists
+            var enrollments = await _supabaseService.GetClient().From<Enrollment>()
+                .Where(e => e.CourseId == courseId && e.UserId == studentId)
+                .Get();
+            
+            if (!enrollments.Models.Any())
+            {
+                return false; // No enrollment found to delete
+            }
+
+            // Delete the enrollment
+            await _supabaseService.GetClient().From<Enrollment>()
+                .Where(e => e.CourseId == courseId && e.UserId == studentId)
+                .Delete();
+            
+            return true; // Successfully deleted
+        }
     }
 }
