@@ -366,8 +366,6 @@ namespace OnlineQuiz.Services
             var isAdmin = userRoles.Any(r => r.RoleId == RoleConstants.Admin);
             var isInstructor = course.InstructorUserId == teacherId;
 
-            Console.WriteLine($"[UnenrollStudent] UserId: {teacherId}, IsAdmin: {isAdmin}, IsInstructor: {isInstructor}, CourseInstructorId: {course.InstructorUserId}");
-
             if (!isAdmin && !isInstructor)
             {
                 throw new UnauthorizedAccessException("Only the assigned instructor or an admin can unenroll students");
