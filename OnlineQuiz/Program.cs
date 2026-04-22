@@ -383,7 +383,7 @@ else
     Console.WriteLine("Swagger/API documentation is DISABLED for security.");
 }
 
-app.UseHttpsRedirection();
+ app.UseHttpsRedirection();
 
 app.UseCors("AllowWebAndMobile");
 

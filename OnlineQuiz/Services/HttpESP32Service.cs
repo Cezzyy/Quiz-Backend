@@ -142,6 +142,14 @@ namespace OnlineQuiz.Services
             return Task.CompletedTask;
         }
 
+        // Keep interface compatibility for hardware event routing
+        public Task ProcessHardwareEventAsync(ESP32HardwareEventDto eventData)
+        {
+            // The new HTTP polling service processes events differently via SubmitResult
+            // so we don't need to do anything here for now.
+            return Task.CompletedTask;
+        }
+
         // --- HTTP Polling Specific Methods ---
 
         // Called by ESP32Controller GET /api/esp32/poll

@@ -35,8 +35,15 @@ namespace OnlineQuiz.Controllers
             {
                 return false;
             }
-
-            return expectedApiKey.Equals(extractedApiKey);
+            var extractedStr = extractedApiKey.ToString();
+            var isMatch = expectedApiKey == extractedStr;
+            
+            if (!isMatch)
+            {
+                _logger.LogWarning("API Key Mismatch! Expected: '{Expected}', Received: '{Received}'", expectedApiKey, extractedStr);
+            }
+            
+            return isMatch;
         }
 
         [HttpGet("poll")]
