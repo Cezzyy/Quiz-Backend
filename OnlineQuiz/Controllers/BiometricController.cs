@@ -50,8 +50,13 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { message = "Invalid token" });
                 }
 
-                // Check if user has permission (Teacher or Admin)
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists and check permission (Teacher or Admin)
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 if (userRole != "Teacher" && userRole != "Admin")
                 {
                     return Forbid();
@@ -105,8 +110,13 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { message = "Invalid token" });
                 }
 
-                // Check if user has permission (Teacher or Admin)
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists and check permission (Teacher or Admin)
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 if (userRole != "Teacher" && userRole != "Admin")
                 {
                     return Forbid();
@@ -165,8 +175,14 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { message = "Invalid token" });
                 }
 
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 // Users can only verify their own fingerprint (unless admin/teacher)
-                var userRole = JwtTokenGenerator.GetUserRole(User);
                 if (userId != currentUserId.Value && userRole != "Teacher" && userRole != "Admin")
                 {
                     return Forbid();
@@ -235,8 +251,12 @@ namespace OnlineQuiz.Controllers
         {
             try
             {
-                // Check if user has permission (Teacher or Admin)
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists and check permission (Teacher or Admin)
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
                 if (userRole != "Teacher" && userRole != "Admin")
                 {
                     return Forbid();
@@ -270,8 +290,14 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { message = "Invalid token" });
                 }
 
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 // Users can only check their own status (unless admin/teacher)
-                var userRole = JwtTokenGenerator.GetUserRole(User);
                 if (userId != currentUserId.Value && userRole != "Teacher" && userRole != "Admin")
                 {
                     return Forbid();
@@ -316,7 +342,12 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { message = "Invalid token" });
                 }
 
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
 
                 // Non-admin users can only see their own logs
                 if (userRole != "Admin" && userRole != "Teacher")

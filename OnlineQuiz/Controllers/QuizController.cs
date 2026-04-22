@@ -83,7 +83,13 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { error = "User not authenticated" });
                 }
 
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 var isStudent = userRole == "Student";
 
                 var quizzes = await _quizService.GetQuizzesForCourseAsync(courseId, currentUserId.Value, isStudent);
@@ -120,7 +126,13 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { error = "User not authenticated" });
                 }
 
-                var userRole = JwtTokenGenerator.GetUserRole(User);
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
                 var isStudent = userRole == "Student";
 
                 var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
