@@ -3,6 +3,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Utilities;
 
+[Collection("MapsterWarmup")]
 public class PasswordHasherTests
 {
     private const string Password = "CorrectHorseBatteryStaple";

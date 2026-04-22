@@ -4,6 +4,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Utilities;
 
+[Collection("MapsterWarmup")]
 public class JwtTokenGeneratorTests
 {
     private const string SecretKey = "super-secret-key-for-tests-1234567890";

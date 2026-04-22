@@ -114,6 +114,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
     }
 
+    [Collection("MapsterWarmup")]
     public class AuthControllerTests
     {
         private static AuthController CreateController(FakeAuthService? authService = null, FakeActivityLogService? activityLogService = null, ClaimsPrincipal? user = null)

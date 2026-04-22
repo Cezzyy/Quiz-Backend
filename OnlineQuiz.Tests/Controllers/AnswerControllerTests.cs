@@ -90,6 +90,7 @@ namespace OnlineQuiz.Tests.Controllers
         }
     }
 
+    [Collection("MapsterWarmup")]
     public class AnswerControllerTests
     {
         private static AnswerController CreateController(FakeAnswerService service)

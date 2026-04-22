@@ -85,6 +85,14 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<int> BulkDeleteAsync(List<int> userIds) => throw new NotImplementedException();
         public Task ResetPasswordAsync(int userId, string newPassword) => throw new NotImplementedException();
         public Task<BulkUserImportResultDto> BulkCreateUsersFromExcelAsync(Stream fileStream, string fileName, int createdByUserId) => throw new NotImplementedException();
+        // Archive stubs
+        public Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy) => throw new NotImplementedException();
+        public Task<UserResponseDto> UnarchiveUserAsync(int userId) => throw new NotImplementedException();
+        public Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy) => throw new NotImplementedException();
+        public Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds) => throw new NotImplementedException();
+        public Task<List<UserResponseDto>> GetArchivedUsersAsync() => throw new NotImplementedException();
+        public Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams) => throw new NotImplementedException();
+        public Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync() => throw new NotImplementedException();
     }
 
     internal class FakeActivityLogServiceForNotifications : IActivityLogService
@@ -105,6 +113,7 @@ namespace OnlineQuiz.Tests.Controllers
             => Task.FromResult<ActivityLogDto?>(null);
     }
 
+    [Collection("MapsterWarmup")]
     public class NotificationControllerTests
     {
         private static NotificationController CreateController(FakeNotificationService svc, ClaimsIdentity identity)
