@@ -47,5 +47,24 @@ namespace OnlineQuiz.Utilities
 
             throw new UnauthorizedAccessException("User identity could not be verified");
         }
+
+        /// <summary>
+        /// Validates that the user has a valid role claim in their JWT token.
+        /// Returns an UnauthorizedObjectResult if role is missing or null.
+        /// </summary>
+        /// <param name="controller">The controller instance</param>
+        /// <param name="userRole">The extracted user role if valid</param>
+        /// <returns>UnauthorizedObjectResult if role is invalid, null if role is valid</returns>
+        public static UnauthorizedObjectResult? ValidateUserRole(this ControllerBase controller, out string userRole)
+        {
+            userRole = JwtTokenGenerator.GetUserRole(controller.User) ?? string.Empty;
+            
+            if (string.IsNullOrEmpty(userRole))
+            {
+                return controller.Unauthorized(new { error = "User role not found in token. Please re-authenticate." });
+            }
+
+            return null;
+        }
     }
 }

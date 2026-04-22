@@ -72,11 +72,27 @@ namespace OnlineQuiz.Controllers
         [HttpGet("course/{courseId}")]
         [ProducesResponseType(typeof(List<QuizResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<List<QuizResponseDto>>> GetQuizzesForCourse(int courseId, [FromQuery] int userId, [FromQuery] bool isStudent)
+        public async Task<ActionResult<List<QuizResponseDto>>> GetQuizzesForCourse(int courseId)
         {
             try
             {
-                var quizzes = await _quizService.GetQuizzesForCourseAsync(courseId, userId, isStudent);
+                // Extract user info from JWT token
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
+                var isStudent = userRole == "Student";
+
+                var quizzes = await _quizService.GetQuizzesForCourseAsync(courseId, currentUserId.Value, isStudent);
                 if (!quizzes.Any())
                 {
                     return Ok(new List<QuizResponseDto>());
@@ -99,12 +115,28 @@ namespace OnlineQuiz.Controllers
         [HttpGet("course/{courseId}/paged")]
         [ProducesResponseType(typeof(PagedResult<QuizResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<PagedResult<QuizResponseDto>>> GetQuizzesForCoursePaged(int courseId, [FromQuery] int userId, [FromQuery] bool isStudent, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<PagedResult<QuizResponseDto>>> GetQuizzesForCoursePaged(int courseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
+                // Extract user info from JWT token
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                // Validate role claim exists
+                var roleValidationError = this.ValidateUserRole(out string userRole);
+                if (roleValidationError != null)
+                {
+                    return roleValidationError;
+                }
+
+                var isStudent = userRole == "Student";
+
                 var paginationParams = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
-                var result = await _quizService.GetQuizzesForCoursePagedAsync(courseId, userId, isStudent, paginationParams);
+                var result = await _quizService.GetQuizzesForCoursePagedAsync(courseId, currentUserId.Value, isStudent, paginationParams);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
@@ -138,21 +170,27 @@ namespace OnlineQuiz.Controllers
         /// </summary>
         /// <param name="quizId">Quiz ID</param>
         /// <param name="updateQuizDto">Updated quiz data</param>
-        /// <param name="userId">Teacher ID (for authorization)</param>
         /// <returns>Updated quiz details</returns>
         [HttpPut("{quizId}")]
         [ProducesResponseType(typeof(QuizResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<QuizResponseDto>> UpdateQuiz(int quizId, [FromBody] UpdateQuizDto updateQuizDto, [FromQuery] int userId)
+        public async Task<ActionResult<QuizResponseDto>> UpdateQuiz(int quizId, [FromBody] UpdateQuizDto updateQuizDto)
         {
             try
             {
+                // Extract user info from JWT token
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
                 // Get old quiz data before update
                 var oldQuiz = await _quizService.GetQuizByIdAsync(quizId);
 
-                var quiz = await _quizService.UpdateQuizAsync(quizId, updateQuizDto, userId);
+                var quiz = await _quizService.UpdateQuizAsync(quizId, updateQuizDto, currentUserId.Value);
 
                 // Log activities
                 try
@@ -163,7 +201,7 @@ namespace OnlineQuiz.Controllers
                         var action = updateQuizDto.IsPublished.Value ? ActivityLogConstants.Actions.PUBLISH : ActivityLogConstants.Actions.UNPUBLISH;
                         await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                         {
-                            UserId = userId,
+                            UserId = currentUserId.Value,
                             Action = action,
                             Entity = ActivityLogConstants.Entities.Quiz,
                             EntityId = quizId,
@@ -177,7 +215,7 @@ namespace OnlineQuiz.Controllers
                     // Log generic UPDATE
                     await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        UserId = userId,
+                        UserId = currentUserId.Value,
                         Action = ActivityLogConstants.Actions.UPDATE,
                         Entity = ActivityLogConstants.Entities.Quiz,
                         EntityId = quizId,
@@ -216,14 +254,21 @@ namespace OnlineQuiz.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult> DeleteQuiz(int quizId, [FromQuery] int userId)
+        public async Task<ActionResult> DeleteQuiz(int quizId)
         {
             try
             {
+                // Extract user info from JWT token
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
                 // Get quiz before delete for logging
                 var quiz = await _quizService.GetQuizByIdAsync(quizId);
 
-                var result = await _quizService.DeleteQuizAsync(quizId, userId);
+                var result = await _quizService.DeleteQuizAsync(quizId, currentUserId.Value);
                 if (!result)
                 {
                     return NotFound(new { error = "Quiz not found" });
@@ -236,7 +281,7 @@ namespace OnlineQuiz.Controllers
                     {
                         await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                         {
-                            UserId = userId,
+                            UserId = currentUserId.Value,
                             Action = ActivityLogConstants.Actions.DELETE,
                             Entity = ActivityLogConstants.Entities.Quiz,
                             EntityId = quizId,
@@ -276,14 +321,21 @@ namespace OnlineQuiz.Controllers
         {
             try
             {
-                var deletedCount = await _quizService.BulkDeleteQuizzesAsync(dto.QuizIds, dto.UserId);
+                // Extract user info from JWT token
+                var currentUserId = JwtTokenGenerator.GetUserId(User);
+                if (!currentUserId.HasValue || currentUserId.Value == 0)
+                {
+                    return Unauthorized(new { error = "User not authenticated" });
+                }
+
+                var deletedCount = await _quizService.BulkDeleteQuizzesAsync(dto.QuizIds, currentUserId.Value);
                 
                 // Log the BULK_DELETE activity
                 try
                 {
                     await _activityLogService.LogActivityAsync(new CreateActivityLogDto
                     {
-                        UserId = dto.UserId,
+                        UserId = currentUserId.Value,
                         Action = ActivityLogConstants.Actions.DELETE,
                         Entity = ActivityLogConstants.Entities.Quiz,
                         Description = $"Bulk deleted {deletedCount} quizzes",
