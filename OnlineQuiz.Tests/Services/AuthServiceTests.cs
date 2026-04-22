@@ -13,6 +13,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Services
 {
+    [Collection("MapsterWarmup")]
     public class AuthServiceTests
     {
         private class InMemoryAuthRepository : IAuthRepository
@@ -107,6 +108,14 @@ namespace OnlineQuiz.Tests.Services
             public Task<int> BulkDeleteAsync(List<int> userIds) => throw new NotImplementedException();
             public Task ResetPasswordAsync(int userId, string newPassword) => throw new NotImplementedException();
             public Task<BulkUserImportResultDto> BulkCreateUsersFromExcelAsync(System.IO.Stream fileStream, string fileName, int createdByUserId) => throw new NotImplementedException();
+            // Archive stubs
+            public Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy) => throw new NotImplementedException();
+            public Task<UserResponseDto> UnarchiveUserAsync(int userId) => throw new NotImplementedException();
+            public Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy) => throw new NotImplementedException();
+            public Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds) => throw new NotImplementedException();
+            public Task<List<UserResponseDto>> GetArchivedUsersAsync() => throw new NotImplementedException();
+            public Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams) => throw new NotImplementedException();
+            public Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync() => throw new NotImplementedException();
         }
 
         private static AuthService CreateService(InMemoryAuthRepository repo, FakeUserService userService)

@@ -63,8 +63,24 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<PagedResult<CourseResponseDto>> GetCoursesForStudentPagedAsync(int studentId, PaginationParams paginationParams) => Task.FromResult(new PagedResult<CourseResponseDto> { Items = new List<CourseResponseDto>(), TotalCount = 0, PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize });
         public Task<int> BulkDeleteCoursesAsync(List<int> courseIds) => Task.FromResult(courseIds.Count);
         public Task<int> BulkUnenrollStudentsAsync(BulkDeleteEnrollmentsDto dto, int teacherId) => Task.FromResult(0);
+        // Archive stubs
+        public Task<CourseResponseDto> ArchiveCourseAsync(int courseId, int archivedBy)
+            => Task.FromResult(new CourseResponseDto { CourseId = courseId, Code = "C101", Name = "Course", Status = "Archived" });
+        public Task<CourseResponseDto> UnarchiveCourseAsync(int courseId)
+            => Task.FromResult(new CourseResponseDto { CourseId = courseId, Code = "C101", Name = "Course", Status = "Active" });
+        public Task<BulkArchiveResponseDto> BulkArchiveCoursesAsync(List<int> courseIds, int archivedBy)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = courseIds.Count, SuccessCount = courseIds.Count });
+        public Task<BulkArchiveResponseDto> BulkUnarchiveCoursesAsync(List<int> courseIds)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = courseIds.Count, SuccessCount = courseIds.Count });
+        public Task<List<CourseResponseDto>> GetArchivedCoursesAsync()
+            => Task.FromResult(new List<CourseResponseDto>());
+        public Task<PagedResult<CourseResponseDto>> GetArchivedCoursesPagedAsync(PaginationParams paginationParams)
+            => Task.FromResult(new PagedResult<CourseResponseDto> { Items = new List<CourseResponseDto>(), TotalCount = 0, PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize });
+        public Task<ArchiveStatisticsDto> GetCourseArchiveStatisticsAsync()
+            => Task.FromResult(new ArchiveStatisticsDto());
     }
 
+    [Collection("MapsterWarmup")]
     public class CourseControllerTests
     {
         private static CourseController CreateController(FakeCourseService courseService)

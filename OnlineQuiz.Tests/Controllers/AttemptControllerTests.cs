@@ -149,6 +149,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
     }
 
+    [Collection("MapsterWarmup")]
     public class AttemptControllerTests
     {
         private static AttemptController CreateController(FakeAttemptService? attemptService = null, FakeActivityLogServiceForAttempt? activityLogService = null)

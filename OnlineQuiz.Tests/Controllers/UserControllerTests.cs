@@ -94,8 +94,25 @@ namespace OnlineQuiz.Tests.Controllers
                 LogId = 10,
                 CreatedUsers = new List<UserResponseDto> { new UserResponseDto { UserId = 25, Email = "new@user.com", FullName = "New User", RoleId = 3, RoleName = "Student" } }
             });
+
+        // Archive stubs
+        public Task<UserResponseDto> ArchiveUserAsync(int userId, int archivedBy)
+            => Task.FromResult(new UserResponseDto { UserId = userId, Email = "user@example.com", FullName = "User", Status = "Archived" });
+        public Task<UserResponseDto> UnarchiveUserAsync(int userId)
+            => Task.FromResult(new UserResponseDto { UserId = userId, Email = "user@example.com", FullName = "User", Status = "Active" });
+        public Task<BulkArchiveResponseDto> BulkArchiveUsersAsync(List<int> userIds, int archivedBy)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = userIds.Count, SuccessCount = userIds.Count });
+        public Task<BulkArchiveResponseDto> BulkUnarchiveUsersAsync(List<int> userIds)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = userIds.Count, SuccessCount = userIds.Count });
+        public Task<List<UserResponseDto>> GetArchivedUsersAsync()
+            => Task.FromResult(new List<UserResponseDto>());
+        public Task<PagedResult<UserResponseDto>> GetArchivedUsersPagedAsync(PaginationParams paginationParams)
+            => Task.FromResult(new PagedResult<UserResponseDto> { Items = new List<UserResponseDto>(), TotalCount = 0, PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize });
+        public Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync()
+            => Task.FromResult(new ArchiveStatisticsDto());
     }
 
+    [Collection("MapsterWarmup")]
     public class UserControllerTests
     {
         private static UserController CreateController(IUserService userService, ClaimsIdentity identity)
