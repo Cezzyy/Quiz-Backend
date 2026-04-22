@@ -371,15 +371,8 @@ namespace OnlineQuiz.Services
                 throw new UnauthorizedAccessException("Only the assigned instructor or an admin can unenroll students");
             }
 
-            // Check if enrollment exists
-            if (!await _enrollmentRepository.ExistsAsync(studentId, courseId))
-            {
-                return false; // Enrollment doesn't exist
-            }
-
-            // Delete enrollment directly by courseId and studentId (single query)
-            await _enrollmentRepository.DeleteByCourseAndStudentAsync(courseId, studentId);
-            return true;
+            // Delete enrollment - returns false if enrollment doesn't exist
+            return await _enrollmentRepository.DeleteByCourseAndStudentAsync(courseId, studentId);
         }
 
         public async Task<CourseResponseDto> UpdateCourseAsync(int courseId, UpdateCourseDto updateCourseDto)
