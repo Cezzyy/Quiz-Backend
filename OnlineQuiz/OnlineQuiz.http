@@ -41,8 +41,8 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "currentPassword": "Password123!",
-  "newPassword": "NewPassword123!"
+  "OldPassword": "admin122",
+  "newPassword": "admin123"
 }
 
 ###
@@ -63,14 +63,14 @@ Accept: application/json
 ###
 
 ### Remove fingerprint enrollment for a user (Teacher/Admin only)
-DELETE {{OnlineQuiz_HostAddress}}/api/biometric/unenroll/{{userId}}
+DELETE {{OnlineQuiz_HostAddress}}/api/biometric/unenroll/1
 Authorization: Bearer {{token}}
 Accept: application/json
 
 ###
 
 ### Start fingerprint verification for a user 
-POST {{OnlineQuiz_HostAddress}}/api/biometric/verify/2
+POST {{OnlineQuiz_HostAddress}}/api/biometric/verify/1
 # Alternatively with quizId
 # POST {{OnlineQuiz_HostAddress}}/api/biometric/verify/{{userId}}?quizId=2
 Authorization: Bearer {{token}}
@@ -126,14 +126,14 @@ Accept: application/json
 ###
 
 ### GET /api/activitylog/{id}
-GET {{OnlineQuiz_HostAddress}}/api/activitylog/{id}
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/1
 Authorization: Bearer {{token}}
 Accept: application/json
 
 ###
 
 ### GET /api/activitylog/user/{userId}
-GET {{OnlineQuiz_HostAddress}}/api/activitylog/user/{userId}
+GET {{OnlineQuiz_HostAddress}}/api/activitylog/user/1
 Authorization: Bearer {{token}}
 Accept: application/json
 
@@ -159,7 +159,16 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  // Add request body here
+    "activityLogId": 1125,
+    "userId": 1,
+    "userFullName": "ACLC Administrator 1",
+    "userEmail": "admin@aclc.edu",
+    "action": "VERIFY",
+    "entity": "Biometric",
+    "entityId": 1,
+    "description": "Started fingerprint verification for user 1",
+    "ipAddress": "127.0.0.1",
+    "userAgent": "",
 }
 Accept: application/json
 

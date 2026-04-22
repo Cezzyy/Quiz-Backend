@@ -14,6 +14,7 @@ namespace OnlineQuiz.Services
     public class HttpESP32Service : IESP32Service
     {
         private readonly ILogger<HttpESP32Service> _logger;
+        private readonly object _syncLock = new object();
         private bool _isConnected;
         private string _currentMode = "Idle"; // Idle, Enrollment, Verification
         private int? _activeUserId;
@@ -35,8 +36,11 @@ namespace OnlineQuiz.Services
         {
             get 
             {
-                // Give it a 30 second timeout on heartbeats
-                return _isConnected && (DateTime.UtcNow - _lastHeartbeat).TotalSeconds < 30;
+                lock (_syncLock)
+                {
+                    // Give it a 30 second timeout on heartbeats
+                    return _isConnected && (DateTime.UtcNow - _lastHeartbeat).TotalSeconds < 30;
+                }
             }
         }
 
@@ -45,16 +49,19 @@ namespace OnlineQuiz.Services
         {
             _logger.LogInformation("Queueing Enroll command for slot {SlotId}, user {UserId}", slotId, userId);
             
-            _pendingCommand = new PendingCommand 
-            { 
-                CommandType = "ENROLL", 
-                SlotId = slotId, 
-                UserId = userId,
-                IssuedAt = DateTime.UtcNow
-            };
-            
-            _currentMode = "Enrollment";
-            _activeUserId = userId;
+            lock (_syncLock)
+            {
+                _pendingCommand = new PendingCommand 
+                { 
+                    CommandType = "ENROLL", 
+                    SlotId = slotId, 
+                    UserId = userId,
+                    IssuedAt = DateTime.UtcNow
+                };
+                
+                _currentMode = "Enrollment";
+                _activeUserId = userId;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Enrollment");
 
             return Task.FromResult(new ESP32ResponseDto
@@ -71,16 +78,19 @@ namespace OnlineQuiz.Services
         {
             _logger.LogInformation("Queueing Verify command for slot {SlotId}, user {UserId}", slotId, userId);
             
-            _pendingCommand = new PendingCommand 
-            { 
-                CommandType = "VERIFY", 
-                SlotId = slotId, 
-                UserId = userId,
-                IssuedAt = DateTime.UtcNow
-            };
+            lock (_syncLock)
+            {
+                _pendingCommand = new PendingCommand 
+                { 
+                    CommandType = "VERIFY", 
+                    SlotId = slotId, 
+                    UserId = userId,
+                    IssuedAt = DateTime.UtcNow
+                };
 
-            _currentMode = "Verification";
-            _activeUserId = userId;
+                _currentMode = "Verification";
+                _activeUserId = userId;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Verification");
 
             return Task.FromResult(new ESP32ResponseDto
@@ -97,9 +107,12 @@ namespace OnlineQuiz.Services
         {
             _logger.LogInformation("Cancelling current operation via HttpESP32Service");
             
-            _pendingCommand = null;
-            _currentMode = "Idle";
-            _activeUserId = null;
+            lock (_syncLock)
+            {
+                _pendingCommand = null;
+                _currentMode = "Idle";
+                _activeUserId = null;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Idle");
 
             return Task.FromResult(new ESP32ResponseDto
@@ -112,32 +125,59 @@ namespace OnlineQuiz.Services
         // Called by backend BiometricService
         public Task<BiometricStatusDto> GetDeviceStatusAsync()
         {
-            if (!IsConnected && _isConnected)
+            bool wasConnected;
+            bool currentConnected;
+            string currentMode;
+            int? activeUserId;
+
+            lock (_syncLock)
             {
-                _isConnected = false;
+                wasConnected = _isConnected;
+                // Evaluate IsConnected property logic here manually to avoid deadlock if IsConnected also locks, 
+                // but IsConnected uses the same lock so it's fine if locks are reentrant. 
+                // However, C# lock is reentrant. So we can just use IsConnected.
+                currentConnected = _isConnected && (DateTime.UtcNow - _lastHeartbeat).TotalSeconds < 30;
+                
+                if (!currentConnected && wasConnected)
+                {
+                    _isConnected = false;
+                }
+
+                currentMode = _currentMode;
+                activeUserId = _activeUserId;
+            }
+
+            if (!currentConnected && wasConnected)
+            {
                 OnDeviceStatusChanged?.Invoke(this, "Disconnected");
             }
 
             return Task.FromResult(new BiometricStatusDto
             {
-                IsConnected = IsConnected,
-                CurrentMode = _currentMode,
-                ActiveUserId = _activeUserId
+                IsConnected = currentConnected,
+                CurrentMode = currentMode,
+                ActiveUserId = activeUserId
             });
         }
 
         // Keep interface compatibility
         public Task<bool> ConnectAsync()
         {
-            _isConnected = true;
-            _lastHeartbeat = DateTime.UtcNow;
+            lock (_syncLock)
+            {
+                _isConnected = true;
+                _lastHeartbeat = DateTime.UtcNow;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Connected");
             return Task.FromResult(true);
         }
 
         public Task DisconnectAsync()
         {
-            _isConnected = false;
+            lock (_syncLock)
+            {
+                _isConnected = false;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Disconnected");
             return Task.CompletedTask;
         }
@@ -157,9 +197,12 @@ namespace OnlineQuiz.Services
         {
             Heartbeat(); // Update connection status since device is polling
 
-            var cmd = _pendingCommand;
-            _pendingCommand = null; // Clear command so it only executes once
-            return cmd;
+            lock (_syncLock)
+            {
+                var cmd = _pendingCommand;
+                _pendingCommand = null; // Clear command so it only executes once
+                return cmd;
+            }
         }
 
         // Called by ESP32Controller POST /api/esp32/result
@@ -168,8 +211,11 @@ namespace OnlineQuiz.Services
             Heartbeat();
             _logger.LogInformation("Received {CommandType} result from ESP32: Success={Success}", commandType, result.Success);
             
-            _currentMode = "Idle";
-            _activeUserId = null;
+            lock (_syncLock)
+            {
+                _currentMode = "Idle";
+                _activeUserId = null;
+            }
             OnDeviceStatusChanged?.Invoke(this, "Idle");
 
             if (commandType == "ENROLL")
@@ -185,10 +231,19 @@ namespace OnlineQuiz.Services
         // Let ESP32 update its presence
         public void Heartbeat()
         {
-            _lastHeartbeat = DateTime.UtcNow;
-            if (!_isConnected)
+            bool wasDisconnected = false;
+            lock (_syncLock)
             {
-                _isConnected = true;
+                _lastHeartbeat = DateTime.UtcNow;
+                if (!_isConnected)
+                {
+                    _isConnected = true;
+                    wasDisconnected = true;
+                }
+            }
+            
+            if (wasDisconnected)
+            {
                 OnDeviceStatusChanged?.Invoke(this, "Connected");
             }
         }

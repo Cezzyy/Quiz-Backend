@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
 using OnlineQuiz.Services;
+using OnlineQuiz.Attributes;
 
 namespace OnlineQuiz.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [ApiKeyAuth("X-ESP32-API-Key", "Biometric:ESP32:ApiKey")]
     public class ESP32Controller : ControllerBase
     {
         private readonly IESP32Service _esp32ServiceBase;
@@ -22,34 +24,11 @@ namespace OnlineQuiz.Controllers
             _logger = logger;
         }
 
-        private bool ValidateApiKey()
-        {
-            var expectedApiKey = _configuration["Biometric:ESP32:ApiKey"];
-            if (string.IsNullOrEmpty(expectedApiKey))
-            {
-                _logger.LogWarning("ESP32 API Key is not configured on the server.");
-                return false; // Fail secure
-            }
 
-            if (!Request.Headers.TryGetValue("X-ESP32-API-Key", out var extractedApiKey))
-            {
-                return false;
-            }
-            var extractedStr = extractedApiKey.ToString();
-            var isMatch = expectedApiKey == extractedStr;
-            
-            if (!isMatch)
-            {
-                _logger.LogWarning("API Key Mismatch! Expected: '{Expected}', Received: '{Received}'", expectedApiKey, extractedStr);
-            }
-            
-            return isMatch;
-        }
 
         [HttpGet("poll")]
         public IActionResult Poll()
         {
-            if (!ValidateApiKey()) return Unauthorized(new { message = "Invalid API Key" });
 
             if (_httpEsp32Service == null)
             {
@@ -79,7 +58,6 @@ namespace OnlineQuiz.Controllers
         [HttpPost("result")]
         public IActionResult SubmitResult([FromBody] ESP32ResultPayload payload)
         {
-            if (!ValidateApiKey()) return Unauthorized(new { message = "Invalid API Key" });
 
             if (_httpEsp32Service == null)
             {

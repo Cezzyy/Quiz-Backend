@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 
 // Load environment variables from .env file
-Env.Load();
+Env.TraversePath(Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
