@@ -6,6 +6,7 @@ using OnlineQuiz.DTOs;
 using OnlineQuiz.IRepository;
 using OnlineQuiz.Models;
 using OnlineQuiz.Services;
+using OnlineQuiz.Tests.Fakes;
 using OnlineQuiz.Utilities;
 using Xunit;
 
@@ -14,7 +15,6 @@ namespace OnlineQuiz.Tests.Services
     [Collection("MapsterWarmup")]
     public class ManualGradingServiceTests
     {
-        // ── Shared in-memory fakes ────────────────────────────────────────
 
         private class InMemoryAnswerRepository : IAttemptAnswerRepository
         {
@@ -110,30 +110,6 @@ namespace OnlineQuiz.Tests.Services
             public Task<int> BulkUnarchiveAsync(List<int> ids) => Task.FromResult(0);
             public Task<List<Course>> GetArchivedAsync() => Task.FromResult(new List<Course>());
             public Task<List<Course>> GetAllIncludingArchivedAsync() => Task.FromResult(_store.Values.ToList());
-            public Task<int> CountArchivedAsync() => Task.FromResult(0);
-        }
-
-        private class InMemoryUserRepository : IUserRepository
-        {
-            private readonly Dictionary<int, User> _store = new();
-            public void Seed(User u) => _store[u.UserId] = u;
-            public Task<User?> GetByIdAsync(int id) { _store.TryGetValue(id, out var u); return Task.FromResult(u); }
-            public Task<User?> GetByEmailAsync(string e) => Task.FromResult<User?>(null);
-            public Task<List<User>> GetAllAsync() => Task.FromResult(_store.Values.ToList());
-            public Task<List<User>> GetByIdsAsync(List<int> ids) => Task.FromResult(_store.Values.Where(u => ids.Contains(u.UserId)).ToList());
-            public Task<User> CreateAsync(User u) { _store[u.UserId] = u; return Task.FromResult(u); }
-            public Task<User> UpdateAsync(User u) { _store[u.UserId] = u; return Task.FromResult(u); }
-            public Task<bool> DeleteAsync(int id) => Task.FromResult(_store.Remove(id));
-            public Task<int> BulkDeleteAsync(List<int> ids) => Task.FromResult(0);
-            public Task<int> CountAsync() => Task.FromResult(_store.Count);
-            public Task<int> CountByRoleAsync(int roleId) => Task.FromResult(0);
-            public Task<List<User>> GetRecentRegistrationsAsync(int days) => Task.FromResult(new List<User>());
-            public Task<User?> ArchiveAsync(int id, int by) => Task.FromResult<User?>(null);
-            public Task<User?> UnarchiveAsync(int id) => Task.FromResult<User?>(null);
-            public Task<int> BulkArchiveAsync(List<int> ids, int by) => Task.FromResult(0);
-            public Task<int> BulkUnarchiveAsync(List<int> ids) => Task.FromResult(0);
-            public Task<List<User>> GetArchivedAsync() => Task.FromResult(new List<User>());
-            public Task<List<User>> GetAllIncludingArchivedAsync() => Task.FromResult(_store.Values.ToList());
             public Task<int> CountArchivedAsync() => Task.FromResult(0);
         }
 

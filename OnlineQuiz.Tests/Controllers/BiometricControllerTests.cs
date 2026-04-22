@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
@@ -78,19 +79,6 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<bool> CancelCurrentOperationAsync() => Task.FromResult(CancelSuccess);
     }
 
-    internal class FakeActivityLogServiceForBiometric : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Tests
-    // ─────────────────────────────────────────────────────────────────────────
     [Collection("MapsterWarmup")]
     public class BiometricControllerTests
     {
@@ -101,7 +89,7 @@ namespace OnlineQuiz.Tests.Controllers
         {
             var controller = new BiometricController(
                 biometric ?? new FakeBiometricService(),
-                new FakeActivityLogServiceForBiometric(),
+                new FakeActivityLogService(),
                 NullLogger<BiometricController>.Instance);
 
             var claims = new List<Claim>
@@ -153,7 +141,7 @@ namespace OnlineQuiz.Tests.Controllers
         {
             var controller = new BiometricController(
                 new FakeBiometricService(),
-                new FakeActivityLogServiceForBiometric(),
+                new FakeActivityLogService(),
                 NullLogger<BiometricController>.Instance);
             controller.ControllerContext = new ControllerContext
             {

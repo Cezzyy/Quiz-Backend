@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using OnlineQuiz.Utilities;
 using Xunit;
 
@@ -87,31 +88,6 @@ namespace OnlineQuiz.Tests.Controllers
             LastChangePasswordDto = changePasswordDto;
             return Task.CompletedTask;
         }
-    }
-
-    // Simple fake implementation of IActivityLogService to avoid external side effects
-    internal class FakeActivityLogService : IActivityLogService
-    {
-        public List<CreateActivityLogDto> LoggedActivities { get; } = new();
-
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-        {
-            LoggedActivities.Add(dto);
-            return Task.FromResult(new ActivityLogDto
-            {
-                ActivityLogId = DateTime.UtcNow.Ticks,
-                UserId = dto.UserId,
-                Action = dto.Action,
-                Entity = dto.Entity,
-                Description = dto.Description,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
     }
 
     [Collection("MapsterWarmup")]

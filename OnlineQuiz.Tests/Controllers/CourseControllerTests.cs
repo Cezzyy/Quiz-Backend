@@ -3,21 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using System.Security.Claims;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
 {
-    internal class FakeActivityLogServiceCourse : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     internal class FakeCourseService : ICourseService
     {
         public bool ThrowUnauthorized { get; set; }
@@ -85,7 +76,7 @@ namespace OnlineQuiz.Tests.Controllers
     {
         private static CourseController CreateController(FakeCourseService courseService)
         {
-            var controller = new CourseController(courseService, new FakeActivityLogServiceCourse());
+            var controller = new CourseController(courseService, new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext

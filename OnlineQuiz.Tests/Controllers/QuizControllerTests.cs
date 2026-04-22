@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using OnlineQuiz.Utilities;
 using Xunit;
 
@@ -110,16 +111,6 @@ namespace OnlineQuiz.Tests.Controllers
             => Task.FromResult(new ArchiveStatisticsDto());
     }
 
-    internal class FakeActivityLogServiceForQuiz : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, Description = dto.Description, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     [Collection("MapsterWarmup")]
     public class QuizControllerTests
     {
@@ -131,7 +122,7 @@ namespace OnlineQuiz.Tests.Controllers
         {
             var controller = new QuizController(
                 quizService ?? new FakeQuizService(),
-                new FakeActivityLogServiceForQuiz());
+                new FakeActivityLogService());
 
             var claims = new List<Claim>
             {
@@ -208,7 +199,7 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task GetQuizzesForCourse_ReturnsUnauthorized_WhenNoUserIdClaim()
         {
-            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             var result = await controller.GetQuizzesForCourse(courseId: 1);
             Assert.IsType<UnauthorizedObjectResult>(result.Result);
@@ -282,7 +273,7 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task UpdateQuiz_ReturnsUnauthorized_WhenNoUserIdClaim()
         {
-            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             var result = await controller.UpdateQuiz(quizId: 1, updateQuizDto: new UpdateQuizDto { Title = "T" });
             Assert.IsType<UnauthorizedObjectResult>(result.Result);
@@ -319,7 +310,7 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task DeleteQuiz_ReturnsUnauthorized_WhenNoUserIdClaim()
         {
-            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             var result = await controller.DeleteQuiz(quizId: 1);
             Assert.IsType<UnauthorizedObjectResult>(result);
@@ -350,7 +341,7 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task BulkDeleteQuizzes_ReturnsUnauthorized_WhenNoUserIdClaim()
         {
-            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1 } };
             var result = await controller.BulkDeleteQuizzes(dto);

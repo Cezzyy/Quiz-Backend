@@ -151,7 +151,7 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task GetMyActivityLogs_ReturnsUnauthorized_WhenNoUserIdClaim()
         {
-            var controller = new ActivityLogController(new FakeActivityLogService());
+            var controller = new ActivityLogController(new Fakes.FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             var result = await controller.GetMyActivityLogs();
             Assert.IsType<UnauthorizedObjectResult>(result.Result);

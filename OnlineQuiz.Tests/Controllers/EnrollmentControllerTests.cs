@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
@@ -77,16 +78,6 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ArchiveStatisticsDto> GetCourseArchiveStatisticsAsync() => throw new NotImplementedException();
     }
 
-    internal class FakeActivityLogServiceForEnrollment : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long id) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     [Collection("MapsterWarmup")]
     public class EnrollmentControllerTests
     {
@@ -96,7 +87,7 @@ namespace OnlineQuiz.Tests.Controllers
         {
             var controller = new EnrollmentController(
                 svc ?? new FakeCourseServiceForEnrollment(),
-                new FakeActivityLogServiceForEnrollment());
+                new FakeActivityLogService());
 
             var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
             controller.ControllerContext = new ControllerContext
@@ -111,7 +102,7 @@ namespace OnlineQuiz.Tests.Controllers
 
         private static EnrollmentController CreateControllerNoAuth(FakeCourseServiceForEnrollment? svc = null)
         {
-            var controller = new EnrollmentController(svc ?? new FakeCourseServiceForEnrollment(), new FakeActivityLogServiceForEnrollment());
+            var controller = new EnrollmentController(svc ?? new FakeCourseServiceForEnrollment(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             return controller;
         }

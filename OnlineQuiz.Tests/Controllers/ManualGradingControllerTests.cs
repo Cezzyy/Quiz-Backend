@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
@@ -58,16 +59,6 @@ namespace OnlineQuiz.Tests.Controllers
         }
     }
 
-    internal class FakeActivityLogServiceForGrading : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long id) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     [Collection("MapsterWarmup")]
     public class ManualGradingControllerTests
     {
@@ -77,7 +68,7 @@ namespace OnlineQuiz.Tests.Controllers
         {
             var controller = new ManualGradingController(
                 svc ?? new FakeManualGradingService(),
-                new FakeActivityLogServiceForGrading());
+                new FakeActivityLogService());
 
             var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
             controller.ControllerContext = new ControllerContext
@@ -92,7 +83,7 @@ namespace OnlineQuiz.Tests.Controllers
 
         private static ManualGradingController CreateControllerNoAuth()
         {
-            var controller = new ManualGradingController(new FakeManualGradingService(), new FakeActivityLogServiceForGrading());
+            var controller = new ManualGradingController(new FakeManualGradingService(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             return controller;
         }
