@@ -246,6 +246,14 @@ namespace OnlineQuiz.Tests.Services
                 return Task.FromResult(count);
             }
 
+            public Task<bool> DeleteByCourseAndStudentAsync(int courseId, int studentId)
+            {
+                var enrollment = _store.Values
+                    .FirstOrDefault(e => e.CourseId == courseId && e.UserId == studentId);
+                if (enrollment == null) return Task.FromResult(false);
+                return Task.FromResult(DeleteById(enrollment.EnrollmentId));
+            }
+
             private bool DeleteById(int enrollmentId)
             {
                 if (!_store.TryGetValue(enrollmentId, out var e)) return false;

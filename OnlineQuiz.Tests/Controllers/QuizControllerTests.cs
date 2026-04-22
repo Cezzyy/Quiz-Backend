@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
@@ -16,12 +17,11 @@ namespace OnlineQuiz.Tests.Controllers
         public bool ThrowUpdateUnauthorized { get; set; }
         public bool ThrowDeleteUnauthorized { get; set; }
         public bool ThrowBulkDeleteUnauthorized { get; set; }
+
         public Task<QuizResponseDto> CreateQuizAsync(CreateQuizDto createQuizDto)
         {
-            if (ThrowCreateUnauthorized)
-                throw new UnauthorizedAccessException("Not allowed to create quiz");
-            if (ThrowCreateValidation)
-                throw new InvalidOperationException("Invalid quiz data");
+            if (ThrowCreateUnauthorized) throw new UnauthorizedAccessException("Not allowed to create quiz");
+            if (ThrowCreateValidation) throw new InvalidOperationException("Invalid quiz data");
             return Task.FromResult(new QuizResponseDto
             {
                 QuizId = 100,
@@ -38,13 +38,11 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<List<QuizResponseDto>> GetQuizzesForCourseAsync(int courseId, int userId, bool isStudent)
         {
             if (courseId == 1)
-            {
                 return Task.FromResult(new List<QuizResponseDto>
                 {
                     new QuizResponseDto { QuizId = 1, CourseId = 1, Title = "Quiz A", CreatedAt = DateTime.UtcNow, IsPublished = true },
                     new QuizResponseDto { QuizId = 2, CourseId = 1, Title = "Quiz B", CreatedAt = DateTime.UtcNow, IsPublished = false },
                 });
-            }
             return Task.FromResult(new List<QuizResponseDto>());
         }
 
@@ -56,10 +54,8 @@ namespace OnlineQuiz.Tests.Controllers
             };
             return Task.FromResult(new PagedResult<QuizResponseDto>
             {
-                Items = items,
-                TotalCount = items.Count,
-                PageNumber = paginationParams.PageNumber,
-                PageSize = paginationParams.PageSize
+                Items = items, TotalCount = items.Count,
+                PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize
             });
         }
 
@@ -71,14 +67,11 @@ namespace OnlineQuiz.Tests.Controllers
 
         public Task<QuizResponseDto> UpdateQuizAsync(int quizId, UpdateQuizDto updateQuizDto, int userId)
         {
-            if (ThrowUpdateArgument)
-                throw new ArgumentException("Quiz not found");
-            if (ThrowUpdateUnauthorized)
-                throw new UnauthorizedAccessException("Not authorized to update");
+            if (ThrowUpdateArgument) throw new ArgumentException("Quiz not found");
+            if (ThrowUpdateUnauthorized) throw new UnauthorizedAccessException("Not authorized to update");
             return Task.FromResult(new QuizResponseDto
             {
-                QuizId = quizId,
-                CourseId = 1,
+                QuizId = quizId, CourseId = 1,
                 Title = updateQuizDto.Title ?? "Updated Quiz",
                 DueAt = updateQuizDto.DueAt,
                 TimeLimitMinutes = updateQuizDto.TimeLimitMinutes,
@@ -89,16 +82,14 @@ namespace OnlineQuiz.Tests.Controllers
 
         public Task<bool> DeleteQuizAsync(int quizId, int userId)
         {
-            if (ThrowDeleteUnauthorized)
-                throw new UnauthorizedAccessException("Not authorized to delete");
+            if (ThrowDeleteUnauthorized) throw new UnauthorizedAccessException("Not authorized to delete");
             if (quizId == 404) return Task.FromResult(false);
             return Task.FromResult(true);
         }
 
         public Task<int> BulkDeleteQuizzesAsync(List<int> quizIds, int userId)
         {
-            if (ThrowBulkDeleteUnauthorized)
-                throw new UnauthorizedAccessException("Not authorized to bulk delete");
+            if (ThrowBulkDeleteUnauthorized) throw new UnauthorizedAccessException("Not authorized to bulk delete");
             return Task.FromResult(quizIds.Count);
         }
 
@@ -122,18 +113,7 @@ namespace OnlineQuiz.Tests.Controllers
     internal class FakeActivityLogServiceForQuiz : IActivityLogService
     {
         public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-        {
-            return Task.FromResult(new ActivityLogDto
-            {
-                ActivityLogId = 1,
-                UserId = dto.UserId,
-                Action = dto.Action,
-                Entity = dto.Entity,
-                Description = dto.Description,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
+            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, Description = dto.Description, CreatedAt = DateTime.UtcNow });
         public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
         public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
         public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
@@ -143,12 +123,33 @@ namespace OnlineQuiz.Tests.Controllers
     [Collection("MapsterWarmup")]
     public class QuizControllerTests
     {
-        private static QuizController CreateController(FakeQuizService? quizService = null, FakeActivityLogServiceForQuiz? activityLogService = null)
+        // Controller now reads userId from JWT claims — helper sets up the identity
+        private static QuizController CreateController(
+            FakeQuizService? quizService = null,
+            int userId = 10,
+            string role = "Teacher")
         {
-            var controller = new QuizController(quizService ?? new FakeQuizService(), activityLogService ?? new FakeActivityLogServiceForQuiz());
-            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var controller = new QuizController(
+                quizService ?? new FakeQuizService(),
+                new FakeActivityLogServiceForQuiz());
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("RoleName", role)
+            };
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
+                }
+            };
             return controller;
         }
+
+        // ── CreateQuiz ────────────────────────────────────────────────────
 
         [Fact]
         public async Task CreateQuiz_ReturnsCreatedAt_WithQuiz()
@@ -164,10 +165,31 @@ namespace OnlineQuiz.Tests.Controllers
         }
 
         [Fact]
+        public async Task CreateQuiz_ReturnsUnauthorized_OnUnauthorizedAccess()
+        {
+            var controller = CreateController(new FakeQuizService { ThrowCreateUnauthorized = true });
+            var result = await controller.CreateQuiz(new CreateQuizDto { CourseId = 1, Title = "Quiz", CreatedBy = 10 });
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+            Assert.NotNull(unauthorized.Value);
+        }
+
+        [Fact]
+        public async Task CreateQuiz_ReturnsBadRequest_OnValidationError()
+        {
+            var controller = CreateController(new FakeQuizService { ThrowCreateValidation = true });
+            var result = await controller.CreateQuiz(new CreateQuizDto { CourseId = 1, Title = "Bad Quiz", CreatedBy = 10 });
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.NotNull(badRequest.Value);
+        }
+
+        // ── GetQuizzesForCourse ───────────────────────────────────────────
+        // Controller now extracts userId + role from JWT — no parameters
+
+        [Fact]
         public async Task GetQuizzesForCourse_ReturnsEmptyList_WhenNone()
         {
-            var controller = CreateController();
-            var result = await controller.GetQuizzesForCourse(courseId: 999, userId: 1, isStudent: true);
+            var controller = CreateController(role: "Teacher");
+            var result = await controller.GetQuizzesForCourse(courseId: 999);
             var ok = Assert.IsType<OkObjectResult>(result.Result);
             var quizzes = Assert.IsType<List<QuizResponseDto>>(ok.Value);
             Assert.Empty(quizzes);
@@ -176,23 +198,34 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task GetQuizzesForCourse_ReturnsOk_WithItems()
         {
-            var controller = CreateController();
-            var result = await controller.GetQuizzesForCourse(courseId: 1, userId: 1, isStudent: true);
+            var controller = CreateController(role: "Teacher");
+            var result = await controller.GetQuizzesForCourse(courseId: 1);
             var ok = Assert.IsType<OkObjectResult>(result.Result);
             var quizzes = Assert.IsType<List<QuizResponseDto>>(ok.Value);
             Assert.NotEmpty(quizzes);
         }
 
         [Fact]
+        public async Task GetQuizzesForCourse_ReturnsUnauthorized_WhenNoUserIdClaim()
+        {
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var result = await controller.GetQuizzesForCourse(courseId: 1);
+            Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        }
+
+        [Fact]
         public async Task GetQuizzesForCoursePaged_ReturnsOk_WithPagedResult()
         {
-            var controller = CreateController();
-            var result = await controller.GetQuizzesForCoursePaged(courseId: 5, userId: 2, isStudent: false, pageNumber: 1, pageSize: 10);
+            var controller = CreateController(role: "Teacher");
+            var result = await controller.GetQuizzesForCoursePaged(courseId: 5, pageNumber: 1, pageSize: 10);
             var ok = Assert.IsType<OkObjectResult>(result.Result);
             var paged = Assert.IsType<PagedResult<QuizResponseDto>>(ok.Value);
             Assert.Equal(1, paged.PageNumber);
             Assert.True(paged.Items.Count > 0);
         }
+
+        // ── GetQuizById ───────────────────────────────────────────────────
 
         [Fact]
         public async Task GetQuizById_ReturnsNotFound_WhenMissing()
@@ -212,12 +245,15 @@ namespace OnlineQuiz.Tests.Controllers
             Assert.Equal(7, quiz.QuizId);
         }
 
+        // ── UpdateQuiz ────────────────────────────────────────────────────
+        // Controller now extracts userId from JWT — no userId parameter
+
         [Fact]
         public async Task UpdateQuiz_ReturnsOk_WithUpdatedFields()
         {
-            var controller = CreateController();
+            var controller = CreateController(userId: 99);
             var updateDto = new UpdateQuizDto { Title = "Updated", IsPublished = true, TimeLimitMinutes = 60 };
-            var result = await controller.UpdateQuiz(quizId: 3, updateQuizDto: updateDto, userId: 99);
+            var result = await controller.UpdateQuiz(quizId: 3, updateQuizDto: updateDto);
             var ok = Assert.IsType<OkObjectResult>(result.Result);
             var quiz = Assert.IsType<QuizResponseDto>(ok.Value);
             Assert.Equal("Updated", quiz.Title);
@@ -226,62 +262,10 @@ namespace OnlineQuiz.Tests.Controllers
         }
 
         [Fact]
-        public async Task DeleteQuiz_ReturnsNoContent_WhenDeleted()
-        {
-            var controller = CreateController();
-            var result = await controller.DeleteQuiz(quizId: 10, userId: 1);
-            Assert.IsType<NoContentResult>(result);
-        }
-
-        [Fact]
-        public async Task DeleteQuiz_ReturnsNotFound_WhenMissing()
-        {
-            var controller = CreateController();
-            var result = await controller.DeleteQuiz(quizId: 404, userId: 1);
-            Assert.IsType<NotFoundObjectResult>(result);
-        }
-
-        [Fact]
-        public async Task BulkDeleteQuizzes_ReturnsNoContent()
-        {
-            var controller = CreateController();
-            var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1, 2, 3 }, UserId = 1 };
-            var result = await controller.BulkDeleteQuizzes(dto);
-            Assert.IsType<NoContentResult>(result);
-        }
-
-        [Fact]
-        public async Task CreateQuiz_ReturnsUnauthorized_OnUnauthorizedAccess()
-        {
-            var fakeService = new FakeQuizService { ThrowCreateUnauthorized = true };
-            var controller = CreateController(quizService: fakeService);
-            var dto = new CreateQuizDto { CourseId = 1, Title = "New Quiz", CreatedBy = 10 };
-        
-            var result = await controller.CreateQuiz(dto);
-            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-            Assert.NotNull(unauthorized.Value);
-        }
-
-        [Fact]
-        public async Task CreateQuiz_ReturnsBadRequest_OnValidationError()
-        {
-            var fakeService = new FakeQuizService { ThrowCreateValidation = true };
-            var controller = CreateController(quizService: fakeService);
-            var dto = new CreateQuizDto { CourseId = 1, Title = "Bad Quiz", CreatedBy = 10 };
-        
-            var result = await controller.CreateQuiz(dto);
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-            Assert.NotNull(badRequest.Value);
-        }
-
-        [Fact]
         public async Task UpdateQuiz_ReturnsNotFound_OnArgumentException()
         {
-            var fakeService = new FakeQuizService { ThrowUpdateArgument = true };
-            var controller = CreateController(quizService: fakeService);
-            var updateDto = new UpdateQuizDto { Title = "Title" };
-        
-            var result = await controller.UpdateQuiz(quizId: 999, updateQuizDto: updateDto, userId: 1);
+            var controller = CreateController(new FakeQuizService { ThrowUpdateArgument = true });
+            var result = await controller.UpdateQuiz(quizId: 999, updateQuizDto: new UpdateQuizDto { Title = "Title" });
             var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
             Assert.NotNull(notFound.Value);
         }
@@ -289,36 +273,88 @@ namespace OnlineQuiz.Tests.Controllers
         [Fact]
         public async Task UpdateQuiz_ReturnsUnauthorized_OnUnauthorizedAccessException()
         {
-            var fakeService = new FakeQuizService { ThrowUpdateUnauthorized = true };
-            var controller = CreateController(quizService: fakeService);
-            var updateDto = new UpdateQuizDto { Title = "Title" };
-        
-            var result = await controller.UpdateQuiz(quizId: 3, updateQuizDto: updateDto, userId: 2);
+            var controller = CreateController(new FakeQuizService { ThrowUpdateUnauthorized = true });
+            var result = await controller.UpdateQuiz(quizId: 3, updateQuizDto: new UpdateQuizDto { Title = "Title" });
             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
             Assert.NotNull(unauthorized.Value);
         }
 
         [Fact]
+        public async Task UpdateQuiz_ReturnsUnauthorized_WhenNoUserIdClaim()
+        {
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var result = await controller.UpdateQuiz(quizId: 1, updateQuizDto: new UpdateQuizDto { Title = "T" });
+            Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        }
+
+        // ── DeleteQuiz ────────────────────────────────────────────────────
+        // Controller now extracts userId from JWT — no userId parameter
+
+        [Fact]
+        public async Task DeleteQuiz_ReturnsNoContent_WhenDeleted()
+        {
+            var controller = CreateController(userId: 1);
+            var result = await controller.DeleteQuiz(quizId: 10);
+            Assert.IsType<NoContentResult>(result);
+        }
+
+        [Fact]
+        public async Task DeleteQuiz_ReturnsNotFound_WhenMissing()
+        {
+            var controller = CreateController(userId: 1);
+            var result = await controller.DeleteQuiz(quizId: 404);
+            Assert.IsType<NotFoundObjectResult>(result);
+        }
+
+        [Fact]
         public async Task DeleteQuiz_ReturnsUnauthorized_OnUnauthorizedAccess()
         {
-            var fakeService = new FakeQuizService { ThrowDeleteUnauthorized = true };
-            var controller = CreateController(quizService: fakeService);
-        
-            var result = await controller.DeleteQuiz(quizId: 10, userId: 1);
+            var controller = CreateController(new FakeQuizService { ThrowDeleteUnauthorized = true }, userId: 1);
+            var result = await controller.DeleteQuiz(quizId: 10);
             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
             Assert.NotNull(unauthorized.Value);
         }
 
         [Fact]
+        public async Task DeleteQuiz_ReturnsUnauthorized_WhenNoUserIdClaim()
+        {
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var result = await controller.DeleteQuiz(quizId: 1);
+            Assert.IsType<UnauthorizedObjectResult>(result);
+        }
+
+        // ── BulkDeleteQuizzes ─────────────────────────────────────────────
+        // BulkDeleteQuizzesDto no longer has UserId — controller reads from JWT
+
+        [Fact]
+        public async Task BulkDeleteQuizzes_ReturnsNoContent()
+        {
+            var controller = CreateController(userId: 1);
+            var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1, 2, 3 } };
+            var result = await controller.BulkDeleteQuizzes(dto);
+            Assert.IsType<NoContentResult>(result);
+        }
+
+        [Fact]
         public async Task BulkDeleteQuizzes_ReturnsUnauthorized_OnUnauthorizedAccess()
         {
-            var fakeService = new FakeQuizService { ThrowBulkDeleteUnauthorized = true };
-            var controller = CreateController(quizService: fakeService);
-            var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1, 2 }, UserId = 1 };
-        
+            var controller = CreateController(new FakeQuizService { ThrowBulkDeleteUnauthorized = true }, userId: 1);
+            var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1, 2 } };
             var result = await controller.BulkDeleteQuizzes(dto);
             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
             Assert.NotNull(unauthorized.Value);
+        }
+
+        [Fact]
+        public async Task BulkDeleteQuizzes_ReturnsUnauthorized_WhenNoUserIdClaim()
+        {
+            var controller = new QuizController(new FakeQuizService(), new FakeActivityLogServiceForQuiz());
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var dto = new BulkDeleteQuizzesDto { QuizIds = new List<int> { 1 } };
+            var result = await controller.BulkDeleteQuizzes(dto);
+            Assert.IsType<UnauthorizedObjectResult>(result);
         }
     }
 }
