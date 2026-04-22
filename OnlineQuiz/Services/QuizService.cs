@@ -144,8 +144,14 @@ namespace OnlineQuiz.Services
                 var course = await _courseRepository.GetByIdAsync(courseId);
                 if (course != null && course.InstructorUserId != userId)
                 {
-                    // Allow admin? For now strict teacher check
-                    throw new UnauthorizedAccessException("Teacher is not assigned to this course");
+                    // Check if user is Admin
+                    var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+                    var isAdmin = userRoles.Any(ur => ur.RoleId == RoleConstants.Admin);
+
+                    if (!isAdmin)
+                    {
+                        throw new UnauthorizedAccessException("Teacher is not assigned to this course");
+                    }
                 }
             }
 
