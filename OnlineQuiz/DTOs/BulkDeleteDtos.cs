@@ -20,9 +20,6 @@ namespace OnlineQuiz.DTOs
         [Required]
         [MinLength(1, ErrorMessage = "At least one quiz ID is required")]
         public List<int> QuizIds { get; set; } = new();
-
-        [Required]
-        public int UserId { get; set; }  // For authorization check
     }
 
     /// <summary>

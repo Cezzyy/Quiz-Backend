@@ -59,9 +59,13 @@ if (!int.TryParse(esp32RetryAttemptsStr, out int esp32RetryAttempts) || esp32Ret
     throw new InvalidOperationException($"BIOMETRIC_ESP32_RETRY_ATTEMPTS must be a non-negative integer, got: {esp32RetryAttemptsStr}");
 }
 
+var esp32ApiKey = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_API_KEY") 
+    ?? throw new InvalidOperationException("BIOMETRIC_ESP32_API_KEY is not set in environment variables");
+
 builder.Configuration["Biometric:ESP32:ConnectionString"] = esp32ConnectionString;
 builder.Configuration["Biometric:ESP32:Timeout"] = esp32Timeout.ToString();
 builder.Configuration["Biometric:ESP32:RetryAttempts"] = esp32RetryAttempts.ToString();
+builder.Configuration["Biometric:ESP32:ApiKey"] = esp32ApiKey;
 
 // Configure JWT Authentication
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
@@ -106,14 +110,19 @@ builder.Services.AddAuthentication(options =>
             }
             else
             {
-                Console.WriteLine($"⚠️ No JWT token found (cookie or header) for {context.Request.Path}");
+                var path = context.Request.Path.Value ?? "";
+                // Don't log warnings for ESP32 hardware endpoints which use API Keys instead of JWT
+                if (!path.StartsWith("/api/esp32/", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"No JWT token found (cookie or header) for {context.Request.Path}");
+                }
             }
 
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"❌ JWT Authentication failed for {context.Request.Path}: {context.Exception.Message}");
+            Console.WriteLine($"JWT Authentication failed for {context.Request.Path}: {context.Exception.Message}");
             return Task.CompletedTask;
         }
     };
@@ -155,9 +164,17 @@ builder.Services.AddScoped<OnlineQuiz.IServices.IExportImportLogService, OnlineQ
 builder.Services.AddScoped<OnlineQuiz.IServices.IManualGradingService, OnlineQuiz.Services.ManualGradingService>();
 builder.Services.AddScoped<OnlineQuiz.IServices.IBiometricService, OnlineQuiz.Services.BiometricService>();
 
-// Register ESP32 Service (Mock for now, swap to real later)
+// Register ESP32 Service (Mock or Real based on configuration)
 // MUST be Singleton so events work across the app
-builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.RealESP32Service>();
+var useMockESP32 = builder.Configuration.GetValue<bool>("Biometric:UseMockESP32");
+if (useMockESP32)
+{
+    builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.MockESP32Service>();
+}
+else
+{
+    builder.Services.AddSingleton<OnlineQuiz.IServices.IESP32Service, OnlineQuiz.Services.HttpESP32Service>();
+}
 
 // Register Background Services
 builder.Services.AddHostedService<OnlineQuiz.Services.DeadlineReminderService>();
@@ -345,10 +362,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Force listening on specific IP address for ESP32 connectivity
-// COMMENTED OUT: Use launchSettings.json or environment variables instead
-// builder.WebHost.UseUrls("http://10.35.134.253:5000", "https://10.35.134.253:5001");
-
 var app = builder.Build();
 
 // Configure forwarded headers for AWS Elastic Beanstalk
@@ -379,8 +392,7 @@ else
     Console.WriteLine("Swagger/API documentation is DISABLED for security.");
 }
 
-// Commented out for ESP32 HTTP connectivity
-// app.UseHttpsRedirection();
+ app.UseHttpsRedirection();
 
 app.UseCors("AllowWebAndMobile");
 

@@ -15,6 +15,7 @@ namespace OnlineQuiz.Services
         private readonly ITeacherRepository _teacherRepository;
         private readonly IStudentRepository _studentRepository;
         private readonly IQuizRepository _quizRepository;
+        private readonly IUserRoleRepository _userRoleRepository;
 
         public CourseService(
             ICourseRepository courseRepository,
@@ -22,7 +23,8 @@ namespace OnlineQuiz.Services
             IUserRepository userRepository,
             ITeacherRepository teacherRepository,
             IStudentRepository studentRepository,
-            IQuizRepository quizRepository)
+            IQuizRepository quizRepository,
+            IUserRoleRepository userRoleRepository)
         {
             _courseRepository = courseRepository;
             _enrollmentRepository = enrollmentRepository;
@@ -30,6 +32,7 @@ namespace OnlineQuiz.Services
             _teacherRepository = teacherRepository;
             _studentRepository = studentRepository;
             _quizRepository = quizRepository;
+            _userRoleRepository = userRoleRepository;
         }
 
         public async Task<CourseResponseDto> CreateCourseAsync(CreateCourseDto createCourseDto)
@@ -346,35 +349,30 @@ namespace OnlineQuiz.Services
 
         public async Task<bool> UnenrollStudentAsync(int courseId, int studentId, int teacherId)
         {
-            // Verify course exists
-            var course = await _courseRepository.GetByIdAsync(courseId);
+            // Verify course exists and check authorization in parallel
+            var courseTask = _courseRepository.GetByIdAsync(courseId);
+            var userRolesTask = _userRoleRepository.GetByUserIdAsync(teacherId);
+            
+            await Task.WhenAll(courseTask, userRolesTask);
+            
+            var course = await courseTask;
             if (course == null)
             {
                 throw new ArgumentException("Course not found");
             }
 
-            // Verify teacher is the instructor
-            if (course.InstructorUserId != teacherId)
+            // Check if user is admin or the course instructor
+            var userRoles = await userRolesTask;
+            var isAdmin = userRoles.Any(r => r.RoleId == RoleConstants.Admin);
+            var isInstructor = course.InstructorUserId == teacherId;
+
+            if (!isAdmin && !isInstructor)
             {
-                throw new UnauthorizedAccessException("Only the assigned instructor can unenroll students");
+                throw new UnauthorizedAccessException("Only the assigned instructor or an admin can unenroll students");
             }
 
-            // Check if enrollment exists
-            if (!await _enrollmentRepository.ExistsAsync(studentId, courseId))
-            {
-                return false; // Enrollment doesn't exist
-            }
-
-            // Delete enrollment
-            var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
-            var enrollment = enrollments.FirstOrDefault(e => e.UserId == studentId);
-            
-            if (enrollment == null)
-            {
-                return false;
-            }
-
-            return await _enrollmentRepository.DeleteAsync(enrollment.EnrollmentId);
+            // Delete enrollment - returns false if enrollment doesn't exist
+            return await _enrollmentRepository.DeleteByCourseAndStudentAsync(courseId, studentId);
         }
 
         public async Task<CourseResponseDto> UpdateCourseAsync(int courseId, UpdateCourseDto updateCourseDto)
@@ -583,16 +581,21 @@ namespace OnlineQuiz.Services
             // Variant 2: Delete by course + student IDs
             if (dto.CourseId.HasValue && dto.StudentIds != null && dto.StudentIds.Any())
             {
-                // Verify teacher is the course instructor
+                // Verify teacher is the course instructor or admin
                 var course = await _courseRepository.GetByIdAsync(dto.CourseId.Value);
                 if (course == null)
                 {
                     throw new ArgumentException("Course not found");
                 }
 
-                if (course.InstructorUserId != teacherId)
+                // Check if user is admin or the course instructor
+                var userRoles = await _userRoleRepository.GetByUserIdAsync(teacherId);
+                var isAdmin = userRoles.Any(r => r.RoleId == RoleConstants.Admin);
+                var isInstructor = course.InstructorUserId == teacherId;
+
+                if (!isAdmin && !isInstructor)
                 {
-                    throw new UnauthorizedAccessException("Only the assigned instructor can unenroll students");
+                    throw new UnauthorizedAccessException("Only the assigned instructor or an admin can unenroll students");
                 }
 
                 return await _enrollmentRepository.BulkDeleteByCourseAndStudentsAsync(dto.CourseId.Value, dto.StudentIds);
