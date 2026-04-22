@@ -242,10 +242,17 @@ namespace OnlineQuiz.Services
                 throw new InvalidOperationException("Quiz belongs to a non-existent course");
             }
 
-            // Verify user is the instructor
+            // Verify user is the instructor or admin
             if (course.InstructorUserId != userId)
             {
-                throw new UnauthorizedAccessException("Only the assigned instructor can update quizzes for this course");
+                // Check if user is Admin
+                var userRoles = await _userRoleRepository.GetByUserIdAsync(userId);
+                var isAdmin = userRoles.Any(ur => ur.RoleId == RoleConstants.Admin);
+
+                if (!isAdmin)
+                {
+                    throw new UnauthorizedAccessException("Only the assigned instructor or an admin can update quizzes for this course");
+                }
             }
 
             // Update fields if provided
