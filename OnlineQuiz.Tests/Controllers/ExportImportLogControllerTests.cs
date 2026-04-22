@@ -97,6 +97,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
     }
 
+    [Collection("MapsterWarmup")]
     public class ExportImportLogControllerTests
     {
         private static ExportImportLogController CreateController(FakeExportImportLogService logService, FakeActivityLogServiceForLogs activity)

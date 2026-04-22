@@ -12,6 +12,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Services
 {
+    [Collection("MapsterWarmup")]
     public class UserServiceTests
     {
         // In-memory fakes for repositories and dependent service
@@ -88,6 +89,15 @@ namespace OnlineQuiz.Tests.Services
                 var result = _store.Values.Select(Clone).ToList();
                 return Task.FromResult(result);
             }
+
+            // Archive stubs
+            public Task<User?> ArchiveAsync(int userId, int archivedBy) => Task.FromResult<User?>(null);
+            public Task<User?> UnarchiveAsync(int userId) => Task.FromResult<User?>(null);
+            public Task<int> BulkArchiveAsync(List<int> userIds, int archivedBy) => Task.FromResult(0);
+            public Task<int> BulkUnarchiveAsync(List<int> userIds) => Task.FromResult(0);
+            public Task<List<User>> GetArchivedAsync() => Task.FromResult(new List<User>());
+            public Task<List<User>> GetAllIncludingArchivedAsync() => Task.FromResult(_store.Values.Select(Clone).ToList());
+            public Task<int> CountArchivedAsync() => Task.FromResult(0);
 
             private static User Clone(User u) => new User
             {

@@ -101,6 +101,22 @@ namespace OnlineQuiz.Tests.Controllers
                 throw new UnauthorizedAccessException("Not authorized to bulk delete");
             return Task.FromResult(quizIds.Count);
         }
+
+        // Archive stubs
+        public Task<QuizResponseDto> ArchiveQuizAsync(int quizId, int userId, int archivedBy)
+            => Task.FromResult(new QuizResponseDto { QuizId = quizId, CourseId = 1, Title = "Archived Quiz", Status = "Archived", CreatedAt = DateTime.UtcNow });
+        public Task<QuizResponseDto> UnarchiveQuizAsync(int quizId, int userId)
+            => Task.FromResult(new QuizResponseDto { QuizId = quizId, CourseId = 1, Title = "Restored Quiz", Status = "Active", CreatedAt = DateTime.UtcNow });
+        public Task<BulkArchiveResponseDto> BulkArchiveQuizzesAsync(List<int> quizIds, int userId, int archivedBy)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = quizIds.Count, SuccessCount = quizIds.Count });
+        public Task<BulkArchiveResponseDto> BulkUnarchiveQuizzesAsync(List<int> quizIds, int userId)
+            => Task.FromResult(new BulkArchiveResponseDto { TotalRequested = quizIds.Count, SuccessCount = quizIds.Count });
+        public Task<List<QuizResponseDto>> GetArchivedQuizzesAsync(int courseId, int userId)
+            => Task.FromResult(new List<QuizResponseDto>());
+        public Task<PagedResult<QuizResponseDto>> GetArchivedQuizzesPagedAsync(int courseId, int userId, PaginationParams paginationParams)
+            => Task.FromResult(new PagedResult<QuizResponseDto> { Items = new List<QuizResponseDto>(), TotalCount = 0, PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize });
+        public Task<ArchiveStatisticsDto> GetQuizArchiveStatisticsAsync(int? courseId = null)
+            => Task.FromResult(new ArchiveStatisticsDto());
     }
 
     internal class FakeActivityLogServiceForQuiz : IActivityLogService
@@ -124,6 +140,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
     }
 
+    [Collection("MapsterWarmup")]
     public class QuizControllerTests
     {
         private static QuizController CreateController(FakeQuizService? quizService = null, FakeActivityLogServiceForQuiz? activityLogService = null)

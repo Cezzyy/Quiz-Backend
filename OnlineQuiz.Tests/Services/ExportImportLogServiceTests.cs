@@ -11,6 +11,7 @@ using Xunit;
 
 namespace OnlineQuiz.Tests.Services
 {
+    [Collection("MapsterWarmup")]
     public class ExportImportLogServiceTests
     {
         private class InMemoryExportImportLogRepository : IExportImportLogRepository
