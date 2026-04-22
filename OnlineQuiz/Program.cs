@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 
 // Load environment variables from .env file
-Env.TraversePath(Load();
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,9 +59,13 @@ if (!int.TryParse(esp32RetryAttemptsStr, out int esp32RetryAttempts) || esp32Ret
     throw new InvalidOperationException($"BIOMETRIC_ESP32_RETRY_ATTEMPTS must be a non-negative integer, got: {esp32RetryAttemptsStr}");
 }
 
+var esp32ApiKey = Environment.GetEnvironmentVariable("BIOMETRIC_ESP32_API_KEY") 
+    ?? throw new InvalidOperationException("BIOMETRIC_ESP32_API_KEY is not set in environment variables");
+
 builder.Configuration["Biometric:ESP32:ConnectionString"] = esp32ConnectionString;
 builder.Configuration["Biometric:ESP32:Timeout"] = esp32Timeout.ToString();
 builder.Configuration["Biometric:ESP32:RetryAttempts"] = esp32RetryAttempts.ToString();
+builder.Configuration["Biometric:ESP32:ApiKey"] = esp32ApiKey;
 
 // Configure JWT Authentication
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
@@ -106,14 +110,19 @@ builder.Services.AddAuthentication(options =>
             }
             else
             {
-                Console.WriteLine($"⚠️ No JWT token found (cookie or header) for {context.Request.Path}");
+                var path = context.Request.Path.Value ?? "";
+                // Don't log warnings for ESP32 hardware endpoints which use API Keys instead of JWT
+                if (!path.StartsWith("/api/esp32/", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"No JWT token found (cookie or header) for {context.Request.Path}");
+                }
             }
 
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"❌ JWT Authentication failed for {context.Request.Path}: {context.Exception.Message}");
+            Console.WriteLine($"JWT Authentication failed for {context.Request.Path}: {context.Exception.Message}");
             return Task.CompletedTask;
         }
     };
