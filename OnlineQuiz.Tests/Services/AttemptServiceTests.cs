@@ -389,6 +389,11 @@ namespace OnlineQuiz.Tests.Services
                 _enrollments.RemoveWhere(e => e.courseId == courseId && studentIds.Contains(e.studentId));
                 return Task.FromResult(before - _enrollments.Count);
             }
+            public Task<bool> DeleteByCourseAndStudentAsync(int courseId, int studentId)
+            {
+                var removed = _enrollments.Remove((studentId, courseId));
+                return Task.FromResult(removed);
+            }
         }
 
         private class InMemoryUserRepository : IUserRepository

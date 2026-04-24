@@ -3,21 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using System.Security.Claims;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
 {
-    internal class FakeActivityLogService3 : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 3, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, CreatedAt = DateTime.UtcNow });
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     internal class FakeUserService : IUserService
     {
         public bool ThrowArgumentOnCreate { get; set; }
@@ -117,7 +108,7 @@ namespace OnlineQuiz.Tests.Controllers
     {
         private static UserController CreateController(IUserService userService, ClaimsIdentity identity)
         {
-            var controller = new UserController(userService, new FakeActivityLogService3());
+            var controller = new UserController(userService, new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }

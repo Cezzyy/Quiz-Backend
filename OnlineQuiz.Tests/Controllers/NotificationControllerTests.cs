@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using OnlineQuiz.Utilities;
 using System.Security.Claims;
 using Xunit;
@@ -95,30 +96,12 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<ArchiveStatisticsDto> GetUserArchiveStatisticsAsync() => throw new NotImplementedException();
     }
 
-    internal class FakeActivityLogServiceForNotifications : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-            => Task.FromResult(new ActivityLogDto { ActivityLogId = 1, UserId = dto.UserId, Action = dto.Action, Entity = dto.Entity, EntityId = dto.EntityId, CreatedAt = DateTime.UtcNow });
-
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter)
-            => Task.FromResult(new List<ActivityLogDto>());
-
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null)
-            => Task.FromResult(new List<ActivityLogDto>());
-
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30)
-            => Task.FromResult(new ActivityLogStatisticsDto());
-
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId)
-            => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     [Collection("MapsterWarmup")]
     public class NotificationControllerTests
     {
         private static NotificationController CreateController(FakeNotificationService svc, ClaimsIdentity identity)
         {
-            var controller = new NotificationController(svc, new FakeUserServiceMinimal(), new FakeActivityLogServiceForNotifications());
+            var controller = new NotificationController(svc, new FakeUserServiceMinimal(), new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }

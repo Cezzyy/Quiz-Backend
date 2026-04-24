@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineQuiz.Controllers;
 using OnlineQuiz.DTOs;
 using OnlineQuiz.IServices;
+using OnlineQuiz.Tests.Fakes;
 using Xunit;
 
 namespace OnlineQuiz.Tests.Controllers
@@ -128,33 +129,12 @@ namespace OnlineQuiz.Tests.Controllers
         }
     }
 
-    internal class FakeActivityLogServiceForAttempt : IActivityLogService
-    {
-        public Task<ActivityLogDto> LogActivityAsync(CreateActivityLogDto dto)
-        {
-            return Task.FromResult(new ActivityLogDto
-            {
-                ActivityLogId = 1,
-                UserId = dto.UserId,
-                Action = dto.Action,
-                Entity = dto.Entity,
-                Description = dto.Description,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        public Task<List<ActivityLogDto>> GetActivityLogsAsync(ActivityLogFilterDto filter) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<List<ActivityLogDto>> GetUserActivityLogsAsync(int userId, int? days = null) => Task.FromResult(new List<ActivityLogDto>());
-        public Task<ActivityLogStatisticsDto> GetActivityStatisticsAsync(int? userId = null, int? days = 30) => Task.FromResult(new ActivityLogStatisticsDto());
-        public Task<ActivityLogDto?> GetActivityLogByIdAsync(long activityLogId) => Task.FromResult<ActivityLogDto?>(null);
-    }
-
     [Collection("MapsterWarmup")]
     public class AttemptControllerTests
     {
-        private static AttemptController CreateController(FakeAttemptService? attemptService = null, FakeActivityLogServiceForAttempt? activityLogService = null)
+        private static AttemptController CreateController(FakeAttemptService? attemptService = null, FakeActivityLogService? activityLogService = null)
         {
-            var controller = new AttemptController(attemptService ?? new FakeAttemptService(), activityLogService ?? new FakeActivityLogServiceForAttempt());
+            var controller = new AttemptController(attemptService ?? new FakeAttemptService(), activityLogService ?? new FakeActivityLogService());
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             return controller;
         }
