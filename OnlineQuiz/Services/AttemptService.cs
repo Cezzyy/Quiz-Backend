@@ -107,6 +107,9 @@ namespace OnlineQuiz.Services
 
             var quizData = await _quizRepository.GetByIdAsync(attempt.QuizId);
             var student = await _userRepository.GetByIdAsync(attempt.UserId);
+            
+            var questions = await _questionRepository.GetByQuizIdAsync(attempt.QuizId);
+            var totalPoints = questions.Sum(q => q.Points);
 
             return new AttemptResponseDto
             {
@@ -118,6 +121,7 @@ namespace OnlineQuiz.Services
                 StartedAt = attempt.StartedAt,
                 SubmittedAt = attempt.SubmittedAt,
                 Score = attempt.Score,
+                TotalPoints = totalPoints,
                 TimeSpentSeconds = attempt.TimeSpentSeconds
             };
         }
@@ -142,9 +146,12 @@ namespace OnlineQuiz.Services
             // Collect user IDs
             var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
             
-            // Batch fetch students
+            // Batch fetch students and questions
             var students = await _userRepository.GetByIdsAsync(userIds);
             var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+            
+            var questions = await _questionRepository.GetByQuizIdAsync(quizId);
+            var totalPoints = questions.Sum(q => q.Points);
 
             foreach (var attempt in attempts)
             {
@@ -164,6 +171,7 @@ namespace OnlineQuiz.Services
                     StartedAt = attempt.StartedAt,
                     SubmittedAt = attempt.SubmittedAt,
                     Score = attempt.Score,
+                    TotalPoints = totalPoints,
                     TimeSpentSeconds = attempt.TimeSpentSeconds
                 });
             }
@@ -207,7 +215,7 @@ namespace OnlineQuiz.Services
                     studentName = name;
                 }
 
-                int? totalPoints = null;
+                decimal? totalPoints = null;
                 if (totalPointsMap.TryGetValue(attempt.QuizId, out var pts))
                 {
                     totalPoints = pts;
