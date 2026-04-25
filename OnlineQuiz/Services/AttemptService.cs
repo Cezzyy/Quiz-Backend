@@ -185,9 +185,13 @@ namespace OnlineQuiz.Services
             // Batch fetch
             var quizzes = await _quizRepository.GetByIdsAsync(quizIds);
             var students = await _userRepository.GetByIdsAsync(userIds);
+            var allQuestions = await _quizRepository.GetQuestionsByQuizIdsAsync(quizIds);
 
             var quizMap = quizzes.ToDictionary(q => q.QuizId, q => q.Title);
             var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
+            var totalPointsMap = allQuestions
+                .GroupBy(q => q.QuizId)
+                .ToDictionary(g => g.Key, g => g.Sum(q => q.Points));
 
             foreach (var attempt in attempts)
             {
@@ -203,6 +207,12 @@ namespace OnlineQuiz.Services
                     studentName = name;
                 }
 
+                int? totalPoints = null;
+                if (totalPointsMap.TryGetValue(attempt.QuizId, out var pts))
+                {
+                    totalPoints = pts;
+                }
+
                 response.Add(new AttemptResponseDto
                 {
                     AttemptId = attempt.AttemptId,
@@ -213,6 +223,7 @@ namespace OnlineQuiz.Services
                     StartedAt = attempt.StartedAt,
                     SubmittedAt = attempt.SubmittedAt,
                     Score = attempt.Score,
+                    TotalPoints = totalPoints,
                     TimeSpentSeconds = attempt.TimeSpentSeconds
                 });
             }

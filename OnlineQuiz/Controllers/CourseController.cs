@@ -238,7 +238,7 @@ namespace OnlineQuiz.Controllers
         [ProducesResponseType(typeof(List<ClassmateDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<List<ClassmateDto>>> GetCourseClassmates(int courseId, [FromQuery] int studentId)
+        public async Task<ActionResult<List<ClassmateDto>>> GetCourseClassmates(int courseId)
         {
             try
             {
@@ -247,7 +247,7 @@ namespace OnlineQuiz.Controllers
                     return Unauthorized(new { error = "User identity could not be verified" });
                 }
 
-                var classmates = await _courseService.GetCourseClassmatesAsync(courseId, studentId > 0 ? studentId : userId);
+                var classmates = await _courseService.GetCourseClassmatesAsync(courseId, userId);
                 return Ok(classmates);
             }
             catch (UnauthorizedAccessException ex)
