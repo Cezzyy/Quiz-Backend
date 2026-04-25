@@ -108,7 +108,7 @@ namespace OnlineQuiz.Services
             var quizData = await _quizRepository.GetByIdAsync(attempt.QuizId);
             var student = await _userRepository.GetByIdAsync(attempt.UserId);
             
-            var questions = await _questionRepository.GetByQuizIdAsync(attempt.QuizId);
+            var questions = await _quizRepository.GetQuestionsByQuizIdAsync(attempt.QuizId);
             var totalPoints = questions.Sum(q => q.Points);
 
             return new AttemptResponseDto
@@ -150,7 +150,7 @@ namespace OnlineQuiz.Services
             var students = await _userRepository.GetByIdsAsync(userIds);
             var studentMap = students.ToDictionary(u => u.UserId, u => u.FullName);
             
-            var questions = await _questionRepository.GetByQuizIdAsync(quizId);
+            var questions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
             var totalPoints = questions.Sum(q => q.Points);
 
             foreach (var attempt in attempts)
