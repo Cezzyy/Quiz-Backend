@@ -54,7 +54,7 @@ namespace OnlineQuiz.Controllers
                 return StatusCode(500, new { message = "HttpESP32Service is not configured." });
             }
 
-            return Ok(new { cancelled = _httpEsp32Service.IsCancelRequested });
+            return Ok(new { cancelled = _httpEsp32Service.CheckAndResetCancel() });
         }
 
         public class ESP32ResultPayload

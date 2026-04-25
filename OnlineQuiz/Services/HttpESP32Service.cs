@@ -262,5 +262,15 @@ namespace OnlineQuiz.Services
                 }
             }
         }
+
+        public bool CheckAndResetCancel()
+        {
+            lock (_syncLock)
+            {
+                var isCancelled = _cancelRequested;
+                _cancelRequested = false;
+                return isCancelled;
+            }
+        }
     }
 }
