@@ -19,6 +19,7 @@ namespace OnlineQuiz.Services
         private string _currentMode = "Idle"; // Idle, Enrollment, Verification
         private int? _activeUserId;
         private DateTime _lastHeartbeat = DateTime.MinValue;
+        private bool _cancelRequested = false;
         
         private PendingCommand? _pendingCommand = null;
 
@@ -61,6 +62,7 @@ namespace OnlineQuiz.Services
                 
                 _currentMode = "Enrollment";
                 _activeUserId = userId;
+                _cancelRequested = false; // Reset cancel flag for new command
             }
             OnDeviceStatusChanged?.Invoke(this, "Enrollment");
 
@@ -90,6 +92,7 @@ namespace OnlineQuiz.Services
 
                 _currentMode = "Verification";
                 _activeUserId = userId;
+                _cancelRequested = false; // Reset cancel flag for new command
             }
             OnDeviceStatusChanged?.Invoke(this, "Verification");
 
@@ -112,6 +115,7 @@ namespace OnlineQuiz.Services
                 _pendingCommand = null;
                 _currentMode = "Idle";
                 _activeUserId = null;
+                _cancelRequested = true; // Signal hardware to stop
             }
             OnDeviceStatusChanged?.Invoke(this, "Idle");
 
@@ -245,6 +249,27 @@ namespace OnlineQuiz.Services
             if (wasDisconnected)
             {
                 OnDeviceStatusChanged?.Invoke(this, "Connected");
+            }
+        }
+
+        public bool IsCancelRequested
+        {
+            get
+            {
+                lock (_syncLock)
+                {
+                    return _cancelRequested;
+                }
+            }
+        }
+
+        public bool CheckAndResetCancel()
+        {
+            lock (_syncLock)
+            {
+                var isCancelled = _cancelRequested;
+                _cancelRequested = false;
+                return isCancelled;
             }
         }
     }

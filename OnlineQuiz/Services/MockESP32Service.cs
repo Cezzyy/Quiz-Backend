@@ -36,6 +36,7 @@ namespace OnlineQuiz.Services
         public event EventHandler<string>? OnDeviceStatusChanged;
 
         public bool IsConnected => _isConnected;
+        public bool IsCancelRequested { get; private set; }
 
         // =====================================================
         // CONNECTION MANAGEMENT
@@ -78,6 +79,7 @@ namespace OnlineQuiz.Services
             }
 
             _currentMode = "Enrollment";
+            IsCancelRequested = false;
             _activeSlotId = slotId;
             _activeUserId = userId;
             OnDeviceStatusChanged?.Invoke(this, "Enrollment");
@@ -153,6 +155,7 @@ namespace OnlineQuiz.Services
             }
 
             _currentMode = "Verification";
+            IsCancelRequested = false;
             _activeSlotId = slotId;
             _activeUserId = userId;
             OnDeviceStatusChanged?.Invoke(this, "Verification");
@@ -214,6 +217,7 @@ namespace OnlineQuiz.Services
             _logger.LogInformation("Mock ESP32: Cancelling current operation");
             
             _currentMode = "Idle";
+            IsCancelRequested = true;
             _activeSlotId = null;
             _activeUserId = null;
             OnDeviceStatusChanged?.Invoke(this, "Idle");
