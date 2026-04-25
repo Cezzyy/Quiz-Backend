@@ -347,6 +347,47 @@ namespace OnlineQuiz.Services
             return response;
         }
 
+        public async Task<List<ClassmateDto>> GetCourseClassmatesAsync(int courseId, int studentId)
+        {
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course == null)
+            {
+                throw new ArgumentException("Course not found");
+            }
+
+            var isEnrolled = await _enrollmentRepository.ExistsAsync(studentId, courseId);
+            if (!isEnrolled)
+            {
+                throw new UnauthorizedAccessException("You are not enrolled in this course");
+            }
+
+            var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
+            var userIds = enrollments.Select(e => e.UserId).Distinct().ToList();
+
+            var users = await _userRepository.GetByIdsAsync(userIds);
+            var userMap = users.ToDictionary(u => u.UserId, u => u);
+
+            var studentDetails = await _studentRepository.GetByIdsAsync(userIds);
+            var studentDetailsMap = studentDetails.ToDictionary(s => s.UserId, s => s);
+
+            var classmates = new List<ClassmateDto>();
+            foreach (var uid in userIds)
+            {
+                userMap.TryGetValue(uid, out var user);
+                studentDetailsMap.TryGetValue(uid, out var details);
+
+                classmates.Add(new ClassmateDto
+                {
+                    UserId = uid,
+                    FullName = user?.FullName,
+                    Email = user?.Email,
+                    StudentSection = details?.Section
+                });
+            }
+
+            return classmates;
+        }
+
         public async Task<bool> UnenrollStudentAsync(int courseId, int studentId, int teacherId)
         {
             // Verify course exists and check authorization in parallel

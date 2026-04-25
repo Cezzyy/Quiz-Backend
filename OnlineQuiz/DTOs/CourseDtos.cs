@@ -91,4 +91,12 @@ namespace OnlineQuiz.DTOs
         public int EnrolledBy { get; set; }
         public string? EnrolledByName { get; set; }
     }
+
+    public class ClassmateDto
+    {
+        public int UserId { get; set; }
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
+        public string? StudentSection { get; set; }
+    }
 }

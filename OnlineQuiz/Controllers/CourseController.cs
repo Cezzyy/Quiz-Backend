@@ -232,6 +232,39 @@ namespace OnlineQuiz.Controllers
 
 
         /// <summary>
+        /// Get classmates for a course (Student only - must be enrolled)
+        /// </summary>
+        [HttpGet("{courseId}/classmates")]
+        [ProducesResponseType(typeof(List<ClassmateDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<List<ClassmateDto>>> GetCourseClassmates(int courseId, [FromQuery] int studentId)
+        {
+            try
+            {
+                if (!this.TryGetAuthenticatedUserId(out int userId))
+                {
+                    return Unauthorized(new { error = "User identity could not be verified" });
+                }
+
+                var classmates = await _courseService.GetCourseClassmatesAsync(courseId, studentId > 0 ? studentId : userId);
+                return Ok(classmates);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while retrieving classmates", details = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Update a course (Admin only - can reassign instructor)
         /// </summary>
         [HttpPut("{courseId}")]
