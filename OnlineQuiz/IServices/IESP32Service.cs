@@ -22,5 +22,6 @@ namespace OnlineQuiz.IServices
         Task<bool> ConnectAsync();
         Task DisconnectAsync();
         bool IsConnected { get; }
+        bool IsCancelRequested { get; }
     }
 }

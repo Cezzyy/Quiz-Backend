@@ -46,6 +46,8 @@ namespace OnlineQuiz.Services
             }
         }
 
+        public bool IsCancelRequested { get; private set; }
+
         public RealESP32Service(ILogger<RealESP32Service> logger)
         {
             _logger = logger;
@@ -78,6 +80,7 @@ namespace OnlineQuiz.Services
                 _logger.LogInformation("Sending enroll command to ESP32: SlotId={SlotId}, UserId={UserId}", slotId, userId);
 
                 // Store pending operation
+                IsCancelRequested = false;
                 var operation = new PendingOperation
                 {
                     Type = "enroll",
@@ -123,6 +126,7 @@ namespace OnlineQuiz.Services
                 _logger.LogInformation("Sending verify command to ESP32: SlotId={SlotId}, UserId={UserId}", slotId, userId);
 
                 // Store pending operation
+                IsCancelRequested = false;
                 var operation = new PendingOperation
                 {
                     Type = "verify",
@@ -164,6 +168,7 @@ namespace OnlineQuiz.Services
         {
             _logger.LogInformation("Cancelling current operation");
             
+            IsCancelRequested = true;
             var count = _pendingOperations.Count;
             _pendingOperations.Clear();
             

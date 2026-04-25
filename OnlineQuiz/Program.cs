@@ -92,37 +92,56 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero // Remove default 5-minute tolerance
     };
 
-    // Configure to read JWT from cookie as well as Authorization header
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
+            var path = context.Request.Path.Value ?? "";
+            
+            // Skip JWT checks/logging for ESP32 hardware endpoints (they use API keys)
+            if (path.StartsWith("/api/esp32", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.CompletedTask;
+            }
+
             // Check if token is in cookie
             if (context.Request.Cookies.ContainsKey("jwt"))
             {
                 context.Token = context.Request.Cookies["jwt"];
-                Console.WriteLine($"JWT token retrieved from cookie for {context.Request.Path}");
+                // Only log in Development to reduce noise
+                if (builder.Environment.IsDevelopment())
+                {
+                    Console.WriteLine($"JWT token retrieved from cookie for {path}");
+                }
             }
             // Otherwise it will be read from Authorization header by default
             else if (!string.IsNullOrEmpty(context.Request.Headers["Authorization"]))
             {
-                Console.WriteLine($"JWT token retrieved from Authorization header for {context.Request.Path}");
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+                if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        Console.WriteLine($"JWT token retrieved from Authorization header for {path}");
+                    }
+                }
             }
             else
             {
-                var path = context.Request.Path.Value ?? "";
-                // Don't log warnings for ESP32 hardware endpoints which use API Keys instead of JWT
-                if (!path.StartsWith("/api/esp32/", StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine($"No JWT token found (cookie or header) for {context.Request.Path}");
-                }
+                // Only log missing tokens for non-anonymous endpoints if you really need to debug
+                // but for ESP32 and other public/API-key endpoints, this is normal.
             }
 
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"JWT Authentication failed for {context.Request.Path}: {context.Exception.Message}");
+            var path = context.Request.Path.Value ?? "";
+            // Don't log failures for ESP32 endpoints as they might hit this if a malformed header is sent
+            if (!path.StartsWith("/api/esp32", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"? JWT Authentication failed for {path}: {context.Exception.Message}");
+            }
             return Task.CompletedTask;
         }
     };

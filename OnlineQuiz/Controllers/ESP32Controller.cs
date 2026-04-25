@@ -46,6 +46,17 @@ namespace OnlineQuiz.Controllers
             return NoContent();
         }
 
+        [HttpGet("check-cancel")]
+        public IActionResult CheckCancel()
+        {
+            if (_httpEsp32Service == null)
+            {
+                return StatusCode(500, new { message = "HttpESP32Service is not configured." });
+            }
+
+            return Ok(new { cancelled = _httpEsp32Service.IsCancelRequested });
+        }
+
         public class ESP32ResultPayload
         {
             public string CommandType { get; set; } = string.Empty;
