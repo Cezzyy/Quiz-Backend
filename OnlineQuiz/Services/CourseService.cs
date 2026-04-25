@@ -362,7 +362,7 @@ namespace OnlineQuiz.Services
             }
 
             var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId);
-            var userIds = enrollments.Select(e => e.UserId).Distinct().ToList();
+            var userIds = enrollments.Select(e => e.UserId).Distinct().Where(uid => uid != studentId).ToList();
 
             var users = await _userRepository.GetByIdsAsync(userIds);
             var userMap = users.ToDictionary(u => u.UserId, u => u);
