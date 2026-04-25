@@ -380,7 +380,6 @@ namespace OnlineQuiz.Services
                 {
                     UserId = uid,
                     FullName = user?.FullName,
-                    Email = user?.Email,
                     StudentSection = details?.Section
                 });
             }
