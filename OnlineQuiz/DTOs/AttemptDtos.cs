@@ -28,6 +28,7 @@ namespace OnlineQuiz.DTOs
         public DateTime StartedAt { get; set; }
         public DateTime? SubmittedAt { get; set; }
         public decimal? Score { get; set; }
+        public decimal? TotalPoints { get; set; }
         public int? TimeSpentSeconds { get; set; }
     }
 

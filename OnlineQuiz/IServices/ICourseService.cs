@@ -10,6 +10,7 @@ namespace OnlineQuiz.IServices
         Task<List<CourseResponseDto>> GetCoursesForStudentAsync(int studentId);
         Task<EnrollmentResponseDto> EnrollStudentAsync(EnrollStudentDto enrollStudentDto);
         Task<List<EnrollmentResponseDto>> GetCourseEnrollmentsAsync(int courseId, int teacherId);
+        Task<List<ClassmateDto>> GetCourseClassmatesAsync(int courseId, int studentId);
         Task<bool> UnenrollStudentAsync(int courseId, int studentId, int teacherId);
         Task<CourseResponseDto> UpdateCourseAsync(int courseId, UpdateCourseDto updateCourseDto);
         Task<bool> DeleteCourseAsync(int courseId);
