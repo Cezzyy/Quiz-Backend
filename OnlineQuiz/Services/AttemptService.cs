@@ -656,13 +656,41 @@ namespace OnlineQuiz.Services
                 bool isCorrect = false;
 
                 // Grade based on question type
-                if (question.Type == QuestionTypeConstants.Single || question.Type == QuestionTypeConstants.Multiple)
+                if (question.Type == QuestionTypeConstants.Single)
                 {
-                    // Check if student's choice is marked as correct
+                    // Single choice - check if student's choice is marked as correct
                     if (answer.ChoiceId.HasValue && choicesMap.TryGetValue(question.QuestionId, out var choices))
                     {
                         var selectedChoice = choices.FirstOrDefault(c => c.ChoiceId == answer.ChoiceId.Value);
                         isCorrect = selectedChoice?.IsCorrect ?? false;
+                    }
+                }
+                else if (question.Type == QuestionTypeConstants.Multiple)
+                {
+                    // Multiple choice - answer is stored as JSON array of choiceIds in FreeText
+                    if (!string.IsNullOrEmpty(answer.FreeText) && choicesMap.TryGetValue(question.QuestionId, out var choices))
+                    {
+                        try
+                        {
+                            // Parse the JSON array of selected choice IDs
+                            var selectedChoiceIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(answer.FreeText);
+                            
+                            if (selectedChoiceIds != null && selectedChoiceIds.Any())
+                            {
+                                // Get all correct choice IDs for this question
+                                var correctChoiceIds = choices.Where(c => c.IsCorrect).Select(c => c.ChoiceId).ToList();
+                                
+                                // Check if student selected exactly the correct choices (no more, no less)
+                                isCorrect = selectedChoiceIds.Count == correctChoiceIds.Count &&
+                                           selectedChoiceIds.All(id => correctChoiceIds.Contains(id)) &&
+                                           correctChoiceIds.All(id => selectedChoiceIds.Contains(id));
+                            }
+                        }
+                        catch (System.Text.Json.JsonException)
+                        {
+                            // Invalid JSON, mark as incorrect
+                            isCorrect = false;
+                        }
                     }
                 }
                 else if (QuestionTypeConstants.IsEssayType(question.Type))
