@@ -677,13 +677,16 @@ namespace OnlineQuiz.Services
                             
                             if (selectedChoiceIds != null && selectedChoiceIds.Any())
                             {
+                                // Deduplicate selected choice IDs to handle edge case where duplicates are submitted
+                                var uniqueSelectedChoiceIds = selectedChoiceIds.Distinct().ToList();
+                                
                                 // Get all correct choice IDs for this question
                                 var correctChoiceIds = choices.Where(c => c.IsCorrect).Select(c => c.ChoiceId).ToList();
                                 
                                 // Check if student selected exactly the correct choices (no more, no less)
-                                isCorrect = selectedChoiceIds.Count == correctChoiceIds.Count &&
-                                           selectedChoiceIds.All(id => correctChoiceIds.Contains(id)) &&
-                                           correctChoiceIds.All(id => selectedChoiceIds.Contains(id));
+                                isCorrect = uniqueSelectedChoiceIds.Count == correctChoiceIds.Count &&
+                                           uniqueSelectedChoiceIds.All(id => correctChoiceIds.Contains(id)) &&
+                                           correctChoiceIds.All(id => uniqueSelectedChoiceIds.Contains(id));
                             }
                         }
                         catch (System.Text.Json.JsonException)
