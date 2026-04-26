@@ -51,6 +51,7 @@ namespace OnlineQuiz.Services
                 FullName = createUserDto.FullName,
                 Status = "Active",
                 ContactNumber = createUserDto.ContactNumber ?? string.Empty,
+                EmergencyContactPerson = createUserDto.EmergencyContactPerson ?? string.Empty,
                 EmergencyContactNumber = createUserDto.EmergencyContactNumber ?? string.Empty,
                 CreatedBy = createUserDto.CreatedBy,
                 CreatedAt = DateTime.UtcNow,
@@ -141,6 +142,7 @@ namespace OnlineQuiz.Services
                 FullName = user.FullName,
                 Status = user.Status,
                 ContactNumber = user.ContactNumber,
+                EmergencyContactPerson = user.EmergencyContactPerson,
                 EmergencyContactNumber = user.EmergencyContactNumber,
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt,
@@ -218,6 +220,7 @@ namespace OnlineQuiz.Services
                     FullName = user.FullName,
                     Status = user.Status,
                     ContactNumber = user.ContactNumber,
+                    EmergencyContactPerson = user.EmergencyContactPerson,
                     EmergencyContactNumber = user.EmergencyContactNumber,
                     CreatedAt = user.CreatedAt,
                     UpdatedAt = user.UpdatedAt,
@@ -308,6 +311,9 @@ namespace OnlineQuiz.Services
             
             if (updateUserDto.ContactNumber != null)
                 user.ContactNumber = updateUserDto.ContactNumber;
+            
+            if (updateUserDto.EmergencyContactPerson != null)
+                user.EmergencyContactPerson = updateUserDto.EmergencyContactPerson;
             
             if (updateUserDto.EmergencyContactNumber != null)
                 user.EmergencyContactNumber = updateUserDto.EmergencyContactNumber;
@@ -609,6 +615,7 @@ namespace OnlineQuiz.Services
                 FullName = createUserDto.FullName,
                 Status = "Active",
                 ContactNumber = createUserDto.ContactNumber ?? string.Empty,
+                EmergencyContactPerson = createUserDto.EmergencyContactPerson ?? string.Empty,
                 EmergencyContactNumber = createUserDto.EmergencyContactNumber ?? string.Empty,
                 CreatedBy = createUserDto.CreatedBy,
                 CreatedAt = DateTime.UtcNow,
@@ -747,6 +754,7 @@ namespace OnlineQuiz.Services
                 FullName = archivedUser.FullName,
                 Status = archivedUser.Status,
                 ContactNumber = archivedUser.ContactNumber,
+                EmergencyContactPerson = archivedUser.EmergencyContactPerson,
                 EmergencyContactNumber = archivedUser.EmergencyContactNumber,
                 CreatedAt = archivedUser.CreatedAt,
                 UpdatedAt = archivedUser.UpdatedAt,
@@ -777,6 +785,7 @@ namespace OnlineQuiz.Services
                 FullName = unarchivedUser.FullName,
                 Status = unarchivedUser.Status,
                 ContactNumber = unarchivedUser.ContactNumber,
+                EmergencyContactPerson = unarchivedUser.EmergencyContactPerson,
                 EmergencyContactNumber = unarchivedUser.EmergencyContactNumber,
                 CreatedAt = unarchivedUser.CreatedAt,
                 UpdatedAt = unarchivedUser.UpdatedAt,
@@ -891,6 +900,7 @@ namespace OnlineQuiz.Services
                     FullName = user.FullName,
                     Status = user.Status,
                     ContactNumber = user.ContactNumber,
+                    EmergencyContactPerson = user.EmergencyContactPerson,
                     EmergencyContactNumber = user.EmergencyContactNumber,
                     CreatedAt = user.CreatedAt,
                     UpdatedAt = user.UpdatedAt,
@@ -993,6 +1003,7 @@ namespace OnlineQuiz.Services
                     FullName = user.FullName,
                     Status = user.Status,
                     ContactNumber = user.ContactNumber,
+                    EmergencyContactPerson = user.EmergencyContactPerson,
                     EmergencyContactNumber = user.EmergencyContactNumber,
                     CreatedAt = user.CreatedAt,
                     UpdatedAt = user.UpdatedAt,
@@ -1063,3 +1074,4 @@ namespace OnlineQuiz.Services
         }
     }
 }
+
