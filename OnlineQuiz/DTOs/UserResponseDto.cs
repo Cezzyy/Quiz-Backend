@@ -7,6 +7,7 @@ namespace OnlineQuiz.DTOs
         public string FullName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string? ContactNumber { get; set; }
+        public string? EmergencyContactPerson { get; set; }
         public string? EmergencyContactNumber { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

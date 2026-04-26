@@ -17,6 +17,9 @@ namespace OnlineQuiz.DTOs
         [MaxLength(50)]
         public string? ContactNumber { get; set; }
 
+        [MaxLength(255)]
+        public string? EmergencyContactPerson { get; set; }
+
         [MaxLength(50)]
         public string? EmergencyContactNumber { get; set; }
 

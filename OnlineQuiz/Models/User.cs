@@ -35,6 +35,10 @@ namespace OnlineQuiz.Models
         [Column("ContactNumber")]
         public string? ContactNumber { get; set; }
 
+        [MaxLength(255)]
+        [Column("EmergencyContactPerson")]
+        public string? EmergencyContactPerson { get; set; }
+
         [MaxLength(50)]
         [Column("EmergencyContactNumber")]
         public string? EmergencyContactNumber { get; set; }
