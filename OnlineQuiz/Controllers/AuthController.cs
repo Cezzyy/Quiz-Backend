@@ -49,8 +49,11 @@ namespace OnlineQuiz.Controllers
                 }
 
                 // Store JWT token in HTTP-only cookie for web clients
-                // Determine if the request is secure (handling proxies like AWS ELB)
-                var isHttps = Request.IsHttps;
+                // Determine if the request is secure (handling proxies like Railway/AWS ELB)
+                // Check X-Forwarded-Proto header first, then Request.IsHttps
+                var forwardedProto = Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+                var isHttps = forwardedProto == "https" || Request.IsHttps;
+                
                 var cookieOptions = new CookieOptions
                 {
                     HttpOnly = true, // Prevents JavaScript access (XSS protection)
@@ -64,6 +67,7 @@ namespace OnlineQuiz.Controllers
 
                 Response.Cookies.Append("jwt", loginResponse.Token, cookieOptions);
                 Console.WriteLine($"JWT token stored in cookie for user: {loginResponse.User.Email}");
+                Console.WriteLine($"Cookie settings - IsHttps: {isHttps}, Secure: {cookieOptions.Secure}, SameSite: {cookieOptions.SameSite}, X-Forwarded-Proto: {forwardedProto ?? "not set"}");
 
                 // Log the LOGIN activity
                 try

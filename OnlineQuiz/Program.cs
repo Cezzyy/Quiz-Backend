@@ -108,11 +108,7 @@ builder.Services.AddAuthentication(options =>
             if (context.Request.Cookies.ContainsKey("jwt"))
             {
                 context.Token = context.Request.Cookies["jwt"];
-                // Only log in Development to reduce noise
-                if (builder.Environment.IsDevelopment())
-                {
-                    Console.WriteLine($"JWT token retrieved from cookie for {path}");
-                }
+                Console.WriteLine($"✓ JWT token retrieved from cookie for {path}");
             }
             // Otherwise it will be read from Authorization header by default
             else if (!string.IsNullOrEmpty(context.Request.Headers["Authorization"]))
@@ -120,16 +116,14 @@ builder.Services.AddAuthentication(options =>
                 var authHeader = context.Request.Headers["Authorization"].ToString();
                 if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (builder.Environment.IsDevelopment())
-                    {
-                        Console.WriteLine($"JWT token retrieved from Authorization header for {path}");
-                    }
+                    Console.WriteLine($"✓ JWT token retrieved from Authorization header for {path}");
                 }
             }
             else
             {
-                // Only log missing tokens for non-anonymous endpoints if you really need to debug
-                // but for ESP32 and other public/API-key endpoints, this is normal.
+                Console.WriteLine($"✗ No JWT token found (cookie or header) for {path}");
+                Console.WriteLine($"  Origin: {context.Request.Headers["Origin"]}");
+                Console.WriteLine($"  Cookies present: {string.Join(", ", context.Request.Cookies.Keys)}");
             }
 
             return Task.CompletedTask;
