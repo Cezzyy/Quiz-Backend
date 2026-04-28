@@ -76,6 +76,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<List<CourseResponseDto>> GetArchivedCoursesAsync() => throw new NotImplementedException();
         public Task<PagedResult<CourseResponseDto>> GetArchivedCoursesPagedAsync(PaginationParams p) => throw new NotImplementedException();
         public Task<ArchiveStatisticsDto> GetCourseArchiveStatisticsAsync() => throw new NotImplementedException();
+        public Task<List<ClassmateDto>> GetCourseClassmatesAsync(int courseId, int studentId) => throw new NotImplementedException();
     }
 
     [Collection("MapsterWarmup")]

@@ -39,6 +39,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<bool> ConnectAsync() => Task.FromResult(true);
         public Task DisconnectAsync() => Task.CompletedTask;
         public bool IsConnected => true;
+        public bool IsCancelRequested => false;
 
         public event EventHandler<ESP32ResponseDto>? OnEnrollmentCompleted;
         public event EventHandler<ESP32ResponseDto>? OnVerificationCompleted;

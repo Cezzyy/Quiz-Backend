@@ -54,6 +54,7 @@ namespace OnlineQuiz.Tests.Controllers
         public Task<PagedResult<CourseResponseDto>> GetCoursesForStudentPagedAsync(int studentId, PaginationParams paginationParams) => Task.FromResult(new PagedResult<CourseResponseDto> { Items = new List<CourseResponseDto>(), TotalCount = 0, PageNumber = paginationParams.PageNumber, PageSize = paginationParams.PageSize });
         public Task<int> BulkDeleteCoursesAsync(List<int> courseIds) => Task.FromResult(courseIds.Count);
         public Task<int> BulkUnenrollStudentsAsync(BulkDeleteEnrollmentsDto dto, int teacherId) => Task.FromResult(0);
+        public Task<List<ClassmateDto>> GetCourseClassmatesAsync(int courseId, int studentId) => Task.FromResult(new List<ClassmateDto>());
         // Archive stubs
         public Task<CourseResponseDto> ArchiveCourseAsync(int courseId, int archivedBy)
             => Task.FromResult(new CourseResponseDto { CourseId = courseId, Code = "C101", Name = "Course", Status = "Archived" });
