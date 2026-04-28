@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using OnlineQuiz.Mappings;
 using OnlineQuiz.Services;
+using OnlineQuiz.Utilities;
 using Scalar.AspNetCore;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -20,9 +21,10 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         // Configure JSON serialization for consistent API responses
-        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase; // Use camelCase
-        options.JsonSerializerOptions.WriteIndented = true; // Pretty print in development
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.WriteIndented = true;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.Converters.Add(new JsonDateTimeConverter());
     });
 
 // Add SignalR for real-time biometric notifications
