@@ -12,7 +12,11 @@ namespace OnlineQuiz.IRepository
         
         // Question and Choice management
         Task<Question> CreateQuestionAsync(Question question);
+        Task<Question> UpdateQuestionAsync(Question question);
+        Task<bool> DeleteQuestionAsync(int questionId);
         Task<Choice> CreateChoiceAsync(Choice choice);
+        Task<Choice> UpdateChoiceAsync(Choice choice);
+        Task<bool> DeleteChoiceAsync(int choiceId);
         Task<List<Question>> GetQuestionsByQuizIdAsync(int quizId);
         Task<List<Question>> GetQuestionsByQuizIdsAsync(List<int> quizIds);
         Task<List<Choice>> GetChoicesByQuestionIdAsync(int questionId);

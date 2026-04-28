@@ -262,6 +262,10 @@ namespace OnlineQuiz.Tests.Services
                     if (_questions.TryGetValue(qid, out var qs)) result.AddRange(qs.Select(Clone));
                 return Task.FromResult(result);
             }
+            public Task<Question> UpdateQuestionAsync(Question question) => Task.FromResult(question);
+            public Task<bool> DeleteQuestionAsync(int questionId) => Task.FromResult(true);
+            public Task<Choice> UpdateChoiceAsync(Choice choice) => Task.FromResult(choice);
+            public Task<bool> DeleteChoiceAsync(int choiceId) => Task.FromResult(true);
             // Archive stubs
             public Task<Quiz?> ArchiveAsync(int quizId, int archivedBy) => Task.FromResult<Quiz?>(null);
             public Task<Quiz?> UnarchiveAsync(int quizId) => Task.FromResult<Quiz?>(null);

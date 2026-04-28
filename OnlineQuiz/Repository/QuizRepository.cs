@@ -90,7 +90,7 @@ namespace OnlineQuiz.Repository
             var options = new Postgrest.QueryOptions { Returning = Postgrest.QueryOptions.ReturnType.Representation };
             var response = await _supabaseService.GetClient().From<Choice>().Insert(choice, options);
             var created = response.Models.FirstOrDefault() ?? throw new InvalidOperationException("Failed to create choice");
-            
+
             // If ChoiceId is not populated, fetch it back
             if (created.ChoiceId == 0)
             {
@@ -101,8 +101,36 @@ namespace OnlineQuiz.Repository
                     .Get();
                 return fetchResult.Models.FirstOrDefault() ?? created;
             }
-            
+
             return created;
+        }
+
+        public async Task<Question> UpdateQuestionAsync(Question question)
+        {
+            var response = await _supabaseService.GetClient().From<Question>().Update(question);
+            return response.Model ?? throw new InvalidOperationException("Failed to update question");
+        }
+
+        public async Task<bool> DeleteQuestionAsync(int questionId)
+        {
+            await _supabaseService.GetClient().From<Question>()
+                .Where(q => q.QuestionId == questionId)
+                .Delete();
+            return true;
+        }
+
+        public async Task<Choice> UpdateChoiceAsync(Choice choice)
+        {
+            var response = await _supabaseService.GetClient().From<Choice>().Update(choice);
+            return response.Model ?? throw new InvalidOperationException("Failed to update choice");
+        }
+
+        public async Task<bool> DeleteChoiceAsync(int choiceId)
+        {
+            await _supabaseService.GetClient().From<Choice>()
+                .Where(c => c.ChoiceId == choiceId)
+                .Delete();
+            return true;
         }
 
         public async Task<List<Question>> GetQuestionsByQuizIdAsync(int quizId)

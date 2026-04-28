@@ -235,6 +235,11 @@ namespace OnlineQuiz.Services
                 throw new ArgumentException($"Quiz with ID {quizId} not found");
             }
 
+            if (quiz.IsPublished)
+            {
+                throw new InvalidOperationException("Published quizzes cannot be edited. Please unpublish the quiz first.");
+            }
+
             // Verify course exists
             var course = await _courseRepository.GetByIdAsync(quiz.CourseId);
             if (course == null)
@@ -283,22 +288,27 @@ namespace OnlineQuiz.Services
             // Handle question updates if provided
             if (updateQuizDto.Questions != null && updateQuizDto.Questions.Any())
             {
+                var existingQuestions = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
+                var existingChoices = await _quizRepository.GetChoicesByQuestionIdsAsync(
+                    existingQuestions.Select(q => q.QuestionId).ToList());
+                var choicesByQuestionId = existingChoices
+                    .GroupBy(c => c.QuestionId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
                 foreach (var questionDto in updateQuizDto.Questions)
                 {
                     // Delete question if marked
-                    if (questionDto.Delete == true && questionDto.QuestionId.HasValue)
+                    if (questionDto.Delete == true && questionDto.QuestionId.HasValue && questionDto.QuestionId.Value != 0)
                     {
-                        // Note: You'll need to add DeleteQuestionAsync to IQuizRepository
-                        // For now, we'll skip or assume cascade delete
+                        await _quizRepository.DeleteQuestionAsync(questionDto.QuestionId.Value);
                         continue;
                     }
 
-                    // Update existing question
-                    if (questionDto.QuestionId.HasValue)
+                    var hasRealQuestionId = questionDto.QuestionId.HasValue && questionDto.QuestionId.Value != 0;
+                    if (hasRealQuestionId)
                     {
-                        var existingQuestion = await _quizRepository.GetQuestionsByQuizIdAsync(quizId);
-                        var question = existingQuestion.FirstOrDefault(q => q.QuestionId == questionDto.QuestionId.Value);
-                        
+                        var question = existingQuestions.FirstOrDefault(q => q.QuestionId == questionDto.QuestionId.Value);
+
                         if (question != null)
                         {
                             if (!string.IsNullOrEmpty(questionDto.Body))
@@ -310,33 +320,77 @@ namespace OnlineQuiz.Services
                             if (!string.IsNullOrEmpty(questionDto.Type))
                                 question.Type = NormalizeQuestionType(questionDto.Type);
 
-                            // Note: You'll need UpdateQuestionAsync in repository
-                            // For now, we acknowledge the limitation
+                            await _quizRepository.UpdateQuestionAsync(question);
+
+                            if (questionDto.Choices != null)
+                            {
+                                var currentChoices = choicesByQuestionId.ContainsKey(question.QuestionId)
+                                    ? choicesByQuestionId[question.QuestionId]
+                                    : new List<Choice>();
+
+                                foreach (var existingChoice in currentChoices.ToList())
+                                {
+                                    var choiceStillPresent = questionDto.Choices.Any(c =>
+                                        c.ChoiceId.HasValue && c.ChoiceId.Value != 0 &&
+                                        c.ChoiceId.Value == existingChoice.ChoiceId);
+                                    if (!choiceStillPresent)
+                                    {
+                                        await _quizRepository.DeleteChoiceAsync(existingChoice.ChoiceId);
+                                    }
+                                }
+
+                                foreach (var choiceDto in questionDto.Choices.Where(c => c.Delete != true))
+                                {
+                                    var hasRealChoiceId = choiceDto.ChoiceId.HasValue && choiceDto.ChoiceId.Value != 0;
+                                    if (hasRealChoiceId)
+                                    {
+                                        var existingChoice = currentChoices.FirstOrDefault(c => c.ChoiceId == choiceDto.ChoiceId.Value);
+                                        if (existingChoice != null)
+                                        {
+                                            if (!string.IsNullOrEmpty(choiceDto.Body))
+                                                existingChoice.Body = choiceDto.Body;
+                                            if (choiceDto.IsCorrect.HasValue)
+                                                existingChoice.IsCorrect = choiceDto.IsCorrect.Value;
+                                            await _quizRepository.UpdateChoiceAsync(existingChoice);
+                                        }
+                                    }
+                                    else if (!string.IsNullOrEmpty(choiceDto.Body))
+                                    {
+                                        var newChoice = new Choice
+                                        {
+                                            QuestionId = question.QuestionId,
+                                            Body = choiceDto.Body,
+                                            IsCorrect = choiceDto.IsCorrect ?? false
+                                        };
+                                        await _quizRepository.CreateChoiceAsync(newChoice);
+                                    }
+                                }
+                            }
                         }
                     }
                     // Create new question
                     else if (!string.IsNullOrEmpty(questionDto.Body))
                     {
                         var normalizedType = NormalizeQuestionType(questionDto.Type ?? "Single");
-                        
+
                         // Validate question type
                         if (!QuestionTypeConstants.IsValid(normalizedType))
                         {
                             throw new ArgumentException($"Invalid question type: {questionDto.Type}. Valid types are: {string.Join(", ", QuestionTypeConstants.ValidTypes)}");
                         }
-                        
+
                         // Validate essay questions don't have choices
                         if (QuestionTypeConstants.IsEssayType(normalizedType) && questionDto.Choices != null && questionDto.Choices.Any(c => c.Delete != true))
                         {
                             throw new ArgumentException("Essay/Text questions cannot have multiple choice options. Please remove choices or change the question type.");
                         }
-                        
+
                         // Validate choice-based questions have at least one choice
                         if (QuestionTypeConstants.RequiresChoices(normalizedType) && (questionDto.Choices == null || !questionDto.Choices.Any(c => c.Delete != true)))
                         {
                             throw new ArgumentException($"{normalizedType} choice questions must have at least one choice option.");
                         }
-                        
+
                         var newQuestion = new Question
                         {
                             QuizId = quizId,
@@ -345,7 +399,7 @@ namespace OnlineQuiz.Services
                             Points = questionDto.Points ?? 1.0m,
                             SortOrder = questionDto.SortOrder ?? 0
                         };
-                        await _quizRepository.CreateQuestionAsync(newQuestion);
+                        var createdQuestion = await _quizRepository.CreateQuestionAsync(newQuestion);
 
                         // Handle choices for new question
                         if (questionDto.Choices != null)
@@ -356,7 +410,7 @@ namespace OnlineQuiz.Services
                                 {
                                     var newChoice = new Choice
                                     {
-                                        QuestionId = newQuestion.QuestionId,
+                                        QuestionId = createdQuestion.QuestionId,
                                         Body = choiceDto.Body,
                                         IsCorrect = choiceDto.IsCorrect ?? false
                                     };

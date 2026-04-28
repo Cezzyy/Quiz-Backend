@@ -79,6 +79,10 @@ namespace OnlineQuiz.Tests.Services
             public Task<int> CountByCourseAsync(int courseId) => Task.FromResult(_quizzes.Values.Count(q => q.CourseId == courseId));
             public Task<int> CountByCourseIdsAsync(List<int> ids) => Task.FromResult(0);
             public Task<int> BulkDeleteAsync(List<int> ids) => Task.FromResult(0);
+            public Task<Question> UpdateQuestionAsync(Question q) => Task.FromResult(q);
+            public Task<bool> DeleteQuestionAsync(int questionId) => Task.FromResult(true);
+            public Task<Choice> UpdateChoiceAsync(Choice c) => Task.FromResult(c);
+            public Task<bool> DeleteChoiceAsync(int choiceId) => Task.FromResult(true);
             public Task<Quiz?> ArchiveAsync(int id, int by) => Task.FromResult<Quiz?>(null);
             public Task<Quiz?> UnarchiveAsync(int id) => Task.FromResult<Quiz?>(null);
             public Task<int> BulkArchiveAsync(List<int> ids, int by) => Task.FromResult(0);
