@@ -85,31 +85,27 @@ namespace OnlineQuiz.Services
                         response.Message);
                 }
 
-                // Send SignalR notification to SPECIFIC USER only (not broadcast)
+                // Send SignalR notification to ALL connected clients
+                // This ensures both the teacher/admin who initiated enrollment AND the student receive the update
                 if (_hubContext != null && response.UserId.HasValue)
                 {
-                    var userGroup = $"user_{response.UserId.Value}";
-                    
+                    // Create payload with all fields to ensure type consistency
+                    var payload = new
+                    {
+                        success = response.Success,
+                        userId = response.UserId,
+                        slotId = response.SlotId,
+                        message = response.Message,
+                        errorCode = response.ErrorCode
+                    };
+
                     if (response.Success)
                     {
-                        await _hubContext.Clients.Group(userGroup).SendAsync("EnrollmentCompleted", new
-                        {
-                            success = true,
-                            userId = response.UserId,
-                            slotId = response.SlotId,
-                            message = response.Message
-                        });
+                        await _hubContext.Clients.All.SendAsync("EnrollmentCompleted", payload);
                     }
                     else
                     {
-                        await _hubContext.Clients.Group(userGroup).SendAsync("EnrollmentFailed", new
-                        {
-                            success = false,
-                            userId = response.UserId,
-                            slotId = response.SlotId,
-                            message = response.Message,
-                            errorCode = response.ErrorCode
-                        });
+                        await _hubContext.Clients.All.SendAsync("EnrollmentFailed", payload);
                     }
                 }
             }
@@ -126,33 +122,28 @@ namespace OnlineQuiz.Services
                 _logger.LogInformation("BiometricListenerService: Verification completed - Success: {Success}, Slot: {SlotId}, UserId: {UserId}", 
                     response.Success, response.SlotId, response.UserId);
 
-                // Send SignalR notification to SPECIFIC USER only (not broadcast)
+                // Send SignalR notification to ALL connected clients
+                // This ensures both the teacher/admin who initiated verification AND the student receive the update
                 if (_hubContext != null && response.UserId.HasValue)
                 {
-                    var userGroup = $"user_{response.UserId.Value}";
-                    
+                    // Create payload with all fields to ensure type consistency
+                    var payload = new
+                    {
+                        success = response.Success,
+                        matched = response.Success,
+                        userId = response.UserId,
+                        slotId = response.SlotId,
+                        message = response.Message,
+                        errorCode = response.ErrorCode
+                    };
+
                     if (response.Success)
                     {
-                        await _hubContext.Clients.Group(userGroup).SendAsync("VerificationCompleted", new
-                        {
-                            success = true,
-                            matched = true,
-                            userId = response.UserId,
-                            slotId = response.SlotId,
-                            message = response.Message
-                        });
+                        await _hubContext.Clients.All.SendAsync("VerificationCompleted", payload);
                     }
                     else
                     {
-                        await _hubContext.Clients.Group(userGroup).SendAsync("VerificationFailed", new
-                        {
-                            success = false,
-                            matched = false,
-                            userId = response.UserId,
-                            slotId = response.SlotId,
-                            message = response.Message,
-                            errorCode = response.ErrorCode
-                        });
+                        await _hubContext.Clients.All.SendAsync("VerificationFailed", payload);
                     }
                 }
             }
